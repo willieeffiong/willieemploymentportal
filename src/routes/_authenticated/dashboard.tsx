@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { submitApplicationFn } from "@/lib/portal.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalFooter, PortalHeader } from "@/components/PortalChrome";
