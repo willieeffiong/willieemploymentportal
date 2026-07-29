@@ -317,6 +317,42 @@ function DashboardPage() {
             )}
           </ul>
         </section>
+
+        <section className="rounded-xl border bg-card p-5 shadow-soft">
+          <h2 className="text-xl font-bold text-primary">Submit application</h2>
+          {profile?.submitted_at ? (
+            <p className="mt-2 rounded-md border-l-4 border-primary bg-secondary p-3 text-sm">
+              Application submitted on {new Date(profile.submitted_at).toLocaleString()}. The admin can now review it.
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Save your profile and upload your documents, then submit. Your application is only sent to the admin
+                after you submit it.
+              </p>
+              {missing.length > 0 ? (
+                <div className="mt-3 rounded-md border-l-4 border-destructive bg-destructive/10 p-3">
+                  <p className="text-sm font-bold text-destructive">
+                    Your application is incomplete. Please fix the following:
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-destructive">
+                    {missing.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <Button
+                className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={submitting}
+                onClick={onSubmitApplication}
+              >
+                {submitting ? "Submitting..." : "Submit application"}
+              </Button>
+            </>
+          )}
+        </section>
+
       </main>
       <PortalFooter />
     </div>
