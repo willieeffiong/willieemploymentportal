@@ -136,8 +136,9 @@ export async function adminListApplicants(adminId: string) {
 
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, full_name, email, status, created_at, email_verified, state, qualification")
-    .order("created_at", { ascending: false });
+    .select("id, full_name, email, status, created_at, email_verified, state, qualification, submitted_at")
+    .not("submitted_at", "is", null)
+    .order("submitted_at", { ascending: false });
   if (error) throw new Error(error.message);
 
   const applicants = (data ?? []).filter((p) => !excluded.includes(p.id));
