@@ -69,3 +69,10 @@ export const reviewApplicant = createServerFn({ method: "POST" })
     const { adminReview } = await import("./portal-actions.server");
     return adminReview(context.userId, data);
   });
+
+export const submitApplicationFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { submitApplication } = await import("./portal-actions.server");
+    return submitApplication(context.userId);
+  });
