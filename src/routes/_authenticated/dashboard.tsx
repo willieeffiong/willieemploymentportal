@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { submitApplicationFn } from "@/lib/portal.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalFooter, PortalHeader } from "@/components/PortalChrome";
@@ -40,6 +42,9 @@ function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
+  const submitApplication = useServerFn(submitApplicationFn);
   const [form, setForm] = useState({
     gender: "",
     date_of_birth: "",
@@ -155,6 +160,25 @@ function DashboardPage() {
     const { data, error } = await supabase.storage.from("documents").createSignedUrl(path, 300);
     if (error || !data) return toast.error("Could not open this document.");
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function onSubmitApplication() {
+    setSubmitting(true);
+    try {
+      const result = await submitApplication({ data: undefined });
+      setMissing(result.missing);
+      if (result.submitted) {
+        toast.success("Application submitted. The admin can now review it.");
+        queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
+      } else {
+        toast.error("Your application is incomplete. Please fix the highlighted items.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not submit your application.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function signOut() {
@@ -317,6 +341,42 @@ function DashboardPage() {
             )}
           </ul>
         </section>
+
+        <section className="rounded-xl border bg-card p-5 shadow-soft">
+          <h2 className="text-xl font-bold text-primary">Submit application</h2>
+          {profile?.submitted_at ? (
+            <p className="mt-2 rounded-md border-l-4 border-primary bg-secondary p-3 text-sm">
+              Application submitted on {new Date(profile.submitted_at).toLocaleString()}. The admin can now review it.
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Save your profile and upload your documents, then submit. Your application is only sent to the admin
+                after you submit it.
+              </p>
+              {missing.length > 0 ? (
+                <div className="mt-3 rounded-md border-l-4 border-destructive bg-destructive/10 p-3">
+                  <p className="text-sm font-bold text-destructive">
+                    Your application is incomplete. Please fix the following:
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-destructive">
+                    {missing.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <Button
+                className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={submitting}
+                onClick={onSubmitApplication}
+              >
+                {submitting ? "Submitting..." : "Submit application"}
+              </Button>
+            </>
+          )}
+        </section>
+
       </main>
       <PortalFooter />
     </div>
