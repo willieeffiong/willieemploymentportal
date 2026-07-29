@@ -162,6 +162,25 @@ function DashboardPage() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function onSubmitApplication() {
+    setSubmitting(true);
+    try {
+      const result = await submitApplication({ data: undefined });
+      setMissing(result.missing);
+      if (result.submitted) {
+        toast.success("Application submitted. The admin can now review it.");
+        queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
+      } else {
+        toast.error("Your application is incomplete. Please fix the highlighted items.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not submit your application.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
