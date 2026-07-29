@@ -40,6 +40,9 @@ function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
+  const submitApplication = useServerFn(submitApplicationFn);
   const [form, setForm] = useState({
     gender: "",
     date_of_birth: "",
