@@ -225,3 +225,51 @@ export async function adminReview(
 
   return { ok: true, emailSent: mail.sent };
 }
+
+export async function submitApplication(userId: string) {
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!profile) throw new Error("Profile not found");
+
+  const { count } = await supabaseAdmin
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  const missing: string[] = [];
+  if (!profile.full_name?.trim()) missing.push("Full name");
+  if (!profile.gender) missing.push("Gender");
+  if (!profile.date_of_birth) missing.push("Date of birth");
+  if (!profile.state) missing.push("State");
+  if (!profile.lga?.trim()) missing.push("Local Government Area");
+  if (!profile.qualification) missing.push("Educational qualification");
+  if (!profile.notes || profile.notes.trim().length < 20) missing.push("Notes / skills description (at least 20 characters)");
+  if (!count) missing.push("At least one document (ID / CV / certificate)");
+
+  if (missing.length) return { submitted: false, missing };
+  if (profile.submitted_at) return { submitted: true, missing: [] as string[] };
+
+  const submittedAt = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("profiles").update({ submitted_at: submittedAt }).eq("id", userId);
+  if (error) throw new Error(error.message);
+
+  await supabaseAdmin.from("notifications").insert({
+    user_id: userId,
+    title: "Application submitted",
+    message: "Your application has been submitted and is now pending review by the admin.",
+  });
+
+  await sendMail({
+    to: ADMIN_EMAIL,
+    subject: "New application submitted",
+    title: "New application submitted",
+    bodyHtml: `<p>An applicant has submitted a complete application.</p><p><strong>Name:</strong> ${profile.full_name}<br/><strong>Email:</strong> ${profile.email}</p><p>Log in to the admin dashboard to review it.</p>`,
+    text: `New application submitted by ${profile.full_name} (${profile.email}).`,
+    idempotencyKey: `submitted-${userId}`,
+  });
+
+  return { submitted: true, missing: [] as string[] };
+}
