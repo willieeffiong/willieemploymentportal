@@ -1,16 +1,29 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getApplicant, listApplicants, reviewApplicant } from "@/lib/portal.functions";
-import { PortalFooter, PortalHeader } from "@/components/PortalChrome";
+import {
+  adminMarkMessagesRead,
+  adminMessageInbox,
+  adminReplyToApplicant,
+  bulkReviewApplicants,
+  getApplicant,
+  listApplicants,
+  reviewApplicant,
+  setEmploymentStatus,
+} from "@/lib/portal.functions";
+import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
+import { EMPLOYMENT_LABELS } from "@/lib/portal-data";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const title = "Admin Dashboard — WILLIE LAB TECH";
-const description = "Review and manage applications to the Willie Lab Tech engineering empowerment.";
+const description = "Review Willie Lab Tech applicants, decisions, messages and analytics.";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -24,223 +37,522 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: AdminPage,
+  component: AdminDashboard,
 });
 
-const statusStyles: Record<string, string> = {
-  pending: "bg-accent text-accent-foreground",
-  accepted: "bg-primary text-primary-foreground",
-  rejected: "bg-destructive text-destructive-foreground",
-};
+const MENU = [
+  { key: "home", label: "Home" },
+  { key: "all", label: "All Applicants" },
+  { key: "accepted", label: "Accepted" },
+  { key: "rejected", label: "Rejected" },
+  { key: "pending", label: "Pending" },
+  { key: "messages", label: "Feedback / Messages" },
+  { key: "notifications", label: "Notifications" },
+];
 
-function AdminPage() {
+type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
+type Detail = Awaited<ReturnType<typeof getApplicant>>;
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    accepted: "bg-primary text-primary-foreground",
+    rejected: "bg-destructive text-destructive-foreground",
+    pending: "bg-accent text-accent-foreground",
+  };
+  return <Badge className={map[status] ?? map.pending}>{status.toUpperCase()}</Badge>;
+}
+
+function AdminDashboard() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const fetchApplicants = useServerFn(listApplicants);
-  const fetchApplicant = useServerFn(getApplicant);
+  const fetchList = useServerFn(listApplicants);
+  const fetchOne = useServerFn(getApplicant);
   const review = useServerFn(reviewApplicant);
-  const [selected, setSelected] = useState<string | null>(null);
+  const bulkReview = useServerFn(bulkReviewApplicants);
+  const setEmployment = useServerFn(setEmploymentStatus);
+  const fetchInbox = useServerFn(adminMessageInbox);
+  const markInbox = useServerFn(adminMarkMessagesRead);
+  const replyTo = useServerFn(adminReplyToApplicant);
+
+  const [view, setView] = useState("home");
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [totals, setTotals] = useState({
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    rejected: 0,
+    thisWeek: 0,
+    acceptanceRate: 0,
+    employed: 0,
+  });
+  const [inbox, setInbox] = useState<Awaited<ReturnType<typeof adminMessageInbox>>["messages"]>([]);
+  const [inboxUnread, setInboxUnread] = useState(0);
+  const [notes, setNotes] = useState<{ id: string; title: string; message: string; read: boolean; created_at: string }[]>([]);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [reason, setReason] = useState("");
+  const [reply, setReply] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const listQuery = useQuery({
-    queryKey: ["admin-applicants"],
-    queryFn: () => fetchApplicants({}),
-  });
+  const load = useCallback(async () => {
+    try {
+      const [list, box, auth] = await Promise.all([fetchList({}), fetchInbox({}), supabase.auth.getUser()]);
+      setApplicants(list.applicants);
+      setTotals(list.totals);
+      setInbox(box.messages);
+      setInboxUnread(box.unread);
+      if (auth.data.user) {
+        const { data } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", auth.data.user.id)
+          .order("created_at", { ascending: false });
+        setNotes((data ?? []) as typeof notes);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load admin data.");
+    }
+  }, [fetchList, fetchInbox]);
 
-  const detailQuery = useQuery({
-    queryKey: ["admin-applicant", selected],
-    enabled: !!selected,
-    queryFn: () => fetchApplicant({ data: { applicantId: selected! } }),
-  });
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const reviewMutation = useMutation({
-    mutationFn: (decision: "accepted" | "rejected") =>
-      review({ data: { applicantId: selected!, decision, reason: reason.trim() || undefined } }),
-    onSuccess: (_data, decision) => {
-      toast.success(`Applicant ${decision}. Notification sent to the portal.`);
-      setReason("");
-      queryClient.invalidateQueries({ queryKey: ["admin-applicants"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-applicant", selected] });
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Action failed."),
-  });
+  const unreadNotes = notes.filter((n) => !n.read).length;
+  const bellCount = unreadNotes + inboxUnread;
 
-  async function signOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    let rows = applicants;
+    if (view === "accepted") rows = rows.filter((a) => a.status === "accepted");
+    if (view === "rejected") rows = rows.filter((a) => a.status === "rejected");
+    if (view === "pending") rows = rows.filter((a) => a.status === "pending");
+    if (!term) return rows;
+    return rows.filter((a) =>
+      [a.full_name, a.email, a.engineering_field ?? "", a.status].join(" ").toLowerCase().includes(term),
+    );
+  }, [applicants, search, view]);
+
+  async function handleLogout() {
     await supabase.auth.signOut();
     navigate({ to: "/admin-login", replace: true });
   }
 
-  if (listQuery.isError) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <PortalHeader subtitle="Admin" />
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 text-center">
-          <h1 className="text-2xl font-bold text-primary">Admin access required</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            This account is not an administrator of the portal.
-          </p>
-          <Button className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90" onClick={signOut}>
-            Back to admin login
-          </Button>
-        </main>
-        <PortalFooter />
-      </div>
-    );
+  async function openApplicant(id: string) {
+    try {
+      setDetail(await fetchOne({ data: { applicantId: id } }));
+      setReason("");
+      setReply("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not open applicant.");
+    }
   }
 
-  const totals = listQuery.data?.totals;
-  const detail = detailQuery.data;
+  async function decide(applicantId: string, decision: "accepted" | "rejected") {
+    setBusy(true);
+    try {
+      await review({ data: { applicantId, decision, reason: reason.trim() || undefined } });
+      toast.success(`Applicant ${decision}.`);
+      setDetail(null);
+      setReason("");
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function decideBulk(decision: "accepted" | "rejected") {
+    if (!selected.length) return toast.error("Select at least one applicant.");
+    setBusy(true);
+    try {
+      const result = await bulkReview({ data: { applicantIds: selected, decision, reason: reason.trim() || undefined } });
+      toast.success(`${result.done} applicant(s) ${decision}.${result.failed ? ` ${result.failed} skipped.` : ""}`);
+      setSelected([]);
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bulk action failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function exportCsv() {
+    const header = ["Name", "Email", "Field", "Qualification", "State", "Status", "Employment", "Submitted"];
+    const rows = applicants.map((a) => [
+      a.full_name,
+      a.email,
+      a.engineering_field ?? "",
+      a.qualification ?? "",
+      a.state ?? "",
+      a.status,
+      a.employment_status,
+      a.submitted_at ?? "",
+    ]);
+    const csv = [header, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "willie-lab-tech-applicants.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const boxes = [
+    { key: "all", label: "All Applicants", value: totals.total },
+    { key: "accepted", label: "Accepted", value: totals.accepted },
+    { key: "rejected", label: "Rejected", value: totals.rejected },
+    { key: "pending", label: "Pending", value: totals.pending },
+  ];
+
+  const listView = (
+    <section className="rounded-xl border bg-card p-5 shadow-soft">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
+        <h1 className="truncate text-xl font-bold text-primary capitalize sm:text-2xl">
+          {view === "all" ? "All applicants" : `${view} applicants`}
+        </h1>
+        <Button variant="outline" className="shrink-0 border-primary text-primary" onClick={exportCsv}>
+          Export CSV
+        </Button>
+      </div>
+
+      <Input
+        className="mt-4"
+        placeholder="Search by name, email, engineering field or status"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {view === "pending" && filtered.length > 0 ? (
+        <div className="mt-4 space-y-2 rounded-lg bg-secondary p-3">
+          <p className="text-sm font-semibold text-primary">Bulk action on {selected.length} selected</p>
+          <Textarea rows={2} placeholder="Optional reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={busy} onClick={() => decideBulk("accepted")} className="bg-primary text-primary-foreground">
+              Accept selected
+            </Button>
+            <Button disabled={busy} variant="destructive" onClick={() => decideBulk("rejected")}>
+              Reject selected
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <ul className="mt-4 space-y-2">
+        {filtered.length === 0 ? (
+          <li className="text-sm text-muted-foreground">No applicants here.</li>
+        ) : (
+          filtered.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 rounded-lg border bg-secondary p-3">
+              {view === "pending" ? (
+                <Checkbox
+                  checked={selected.includes(a.id)}
+                  onCheckedChange={(v) =>
+                    setSelected((prev) => (v === true ? [...prev, a.id] : prev.filter((id) => id !== a.id)))
+                  }
+                />
+              ) : null}
+              <button type="button" onClick={() => openApplicant(a.id)} className="min-w-0 flex-1 text-left">
+                <p className="truncate font-semibold text-primary">{a.full_name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {a.email} · {a.engineering_field ?? "No field"}
+                </p>
+              </button>
+              <StatusBadge status={a.status} />
+            </li>
+          ))
+        )}
+      </ul>
+    </section>
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <PortalHeader subtitle="Admin" />
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-8">
-        <section className="flex flex-wrap items-center gap-3 rounded-xl bg-hero p-5 text-primary-foreground shadow-soft">
-          <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">Admin dashboard</h1>
-            <p className="text-sm opacity-90">Willie Lab Tech empowerment applications</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto border-primary-foreground/50 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-            onClick={signOut}
-          >
-            Logout
-          </Button>
-        </section>
+      <PortalAppHeader
+        subtitle="Admin portal"
+        items={MENU}
+        active={view}
+        unread={bellCount}
+        onSelect={(key) => {
+          setDetail(null);
+          setSelected([]);
+          setView(key);
+        }}
+        onLogout={handleLogout}
+      />
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Total applicants", value: totals?.total ?? 0 },
-            { label: "Pending", value: totals?.pending ?? 0 },
-            { label: "Accepted", value: totals?.accepted ?? 0 },
-            { label: "Rejected", value: totals?.rejected ?? 0 },
-          ].map((card) => (
-            <div key={card.label} className="rounded-xl border-t-4 border-accent bg-card p-4 shadow-soft">
-              <p className="text-3xl font-bold text-primary">{card.value}</p>
-              <p className="text-xs text-muted-foreground">{card.label}</p>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+        {detail ? (
+          <section className="rounded-xl border bg-card p-5 shadow-soft">
+            <button type="button" onClick={() => setDetail(null)} className="text-sm font-semibold text-primary underline">
+              ← Back
+            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary ring-2 ring-accent">
+                {detail.avatarUrl ? (
+                  <img src={detail.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xl font-bold text-primary">{detail.profile.full_name.charAt(0)}</span>
+                )}
+              </span>
+              <div className="min-w-0">
+                <h1 className="truncate text-xl font-bold text-primary">{detail.profile.full_name}</h1>
+                <p className="truncate text-sm text-muted-foreground">{detail.profile.email}</p>
+              </div>
+              <StatusBadge status={detail.profile.status} />
             </div>
-          ))}
-        </section>
 
-        <section className="rounded-xl border bg-card p-5 shadow-soft">
-          <h2 className="text-xl font-bold text-primary">Applicants</h2>
-          <div className="mt-3 divide-y">
-            {listQuery.isLoading ? (
-              <p className="py-3 text-sm text-muted-foreground">Loading applicants...</p>
-            ) : (listQuery.data?.applicants ?? []).length === 0 ? (
-              <p className="py-3 text-sm text-muted-foreground">No applicants yet.</p>
+            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+              {[
+                ["Phone", detail.profile.phone ?? "-"],
+                ["Gender", detail.profile.gender ?? "-"],
+                ["Date of birth", detail.profile.date_of_birth ?? "-"],
+                ["State", detail.profile.state ?? "-"],
+                ["LGA", detail.profile.lga ?? "-"],
+                ["Engineering field", detail.profile.engineering_field ?? "-"],
+                ["Qualification", detail.profile.qualification ?? "-"],
+                ["Employment", EMPLOYMENT_LABELS[detail.profile.employment_status] ?? detail.profile.employment_status],
+              ].map(([k, v]) => (
+                <div key={k as string} className="rounded-lg bg-secondary p-3">
+                  <dt className="text-xs font-semibold text-muted-foreground uppercase">{k}</dt>
+                  <dd className="text-sm font-medium">{v as string}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-4 rounded-lg bg-secondary p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Skills / notes</p>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{detail.profile.notes ?? "-"}</p>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-sm font-semibold text-primary">Documents</p>
+              <ul className="mt-2 space-y-2">
+                {detail.documents.length === 0 ? (
+                  <li className="text-sm text-muted-foreground">No documents.</li>
+                ) : (
+                  detail.documents.map((doc) => (
+                    <li key={doc.id} className="flex items-center justify-between gap-3 rounded-md bg-secondary px-3 py-2 text-sm">
+                      <span className="min-w-0 truncate">{doc.file_name}</span>
+                      {doc.url ? (
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="shrink-0 font-semibold text-primary underline">
+                          View
+                        </a>
+                      ) : null}
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+
+            {detail.profile.status === "pending" ? (
+              <div className="mt-5 space-y-2 rounded-lg border-2 border-accent p-4">
+                <p className="text-sm font-semibold text-primary">Decision</p>
+                <Textarea rows={2} placeholder="Optional reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+                <div className="flex flex-wrap gap-2">
+                  <Button disabled={busy} onClick={() => decide(detail.profile.id, "accepted")} className="bg-primary text-primary-foreground">
+                    Accept
+                  </Button>
+                  <Button disabled={busy} variant="destructive" onClick={() => decide(detail.profile.id, "rejected")}>
+                    Reject
+                  </Button>
+                </div>
+              </div>
             ) : (
-              (listQuery.data?.applicants ?? []).map((applicant) => (
-                <button
-                  key={applicant.id}
-                  onClick={() => setSelected(applicant.id)}
-                  className={`flex w-full flex-wrap items-center gap-3 py-3 text-left transition-colors hover:bg-secondary ${
-                    selected === applicant.id ? "bg-secondary" : ""
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{applicant.full_name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{applicant.email}</p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${statusStyles[applicant.status]}`}
-                  >
-                    {applicant.status}
-                  </span>
-                </button>
-              ))
+              <div className="mt-5 rounded-lg bg-secondary p-4 text-sm">
+                Decision recorded: <strong className="uppercase">{detail.profile.status}</strong>
+                {detail.profile.review_reason ? ` — ${detail.profile.review_reason}` : ""}
+              </div>
             )}
-          </div>
-        </section>
 
-        {selected ? (
-          <section className="rounded-xl border-t-4 border-accent bg-card p-5 shadow-soft">
-            <h2 className="text-xl font-bold text-primary">Applicant details</h2>
-            {detailQuery.isLoading || !detail ? (
-              <p className="mt-2 text-sm text-muted-foreground">Loading details...</p>
-            ) : (
-              <>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {[
-                    ["Full name", detail.profile.full_name],
-                    ["Email", detail.profile.email],
-                    ["Gender", detail.profile.gender],
-                    ["Date of birth", detail.profile.date_of_birth],
-                    ["State", detail.profile.state],
-                    ["LGA", detail.profile.lga],
-                    ["Qualification", detail.profile.qualification],
-                    ["Status", detail.profile.status],
-                  ].map(([label, value]) => (
-                    <div key={label as string} className="rounded-md bg-secondary p-3">
-                      <dt className="text-xs text-muted-foreground">{label}</dt>
-                      <dd className="font-medium">{(value as string) || "—"}</dd>
+            <div className="mt-5 space-y-2 rounded-lg border p-4">
+              <p className="text-sm font-semibold text-primary">Employment status</p>
+              <Select
+                value={detail.profile.employment_status}
+                onValueChange={async (value) => {
+                  await setEmployment({
+                    data: {
+                      applicantId: detail.profile.id,
+                      employmentStatus: value as "pending" | "employed" | "not_qualified",
+                    },
+                  });
+                  toast.success("Employment status updated.");
+                  await openApplicant(detail.profile.id);
+                  await load();
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="employed">Employed</SelectItem>
+                  <SelectItem value="not_qualified">Not qualified</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="mt-5 space-y-2 rounded-lg border p-4">
+              <p className="text-sm font-semibold text-primary">Conversation</p>
+              <div className="max-h-72 space-y-2 overflow-y-auto rounded-md bg-secondary p-3">
+                {detail.messages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No messages yet.</p>
+                ) : (
+                  detail.messages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                        m.sender === "admin" ? "ml-auto bg-primary text-primary-foreground" : "bg-card"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{m.body}</p>
+                      <p className="mt-1 text-[11px] opacity-70">{new Date(m.created_at).toLocaleString()}</p>
                     </div>
-                  ))}
-                </dl>
-
-                <div className="mt-4 rounded-md bg-secondary p-3">
-                  <p className="text-xs text-muted-foreground">Notes / Skills</p>
-                  <p className="mt-1 text-sm whitespace-pre-wrap">{detail.profile.notes || "—"}</p>
-                </div>
-
-                <h3 className="mt-5 font-bold text-primary">Documents</h3>
-                <ul className="mt-2 space-y-2">
-                  {detail.documents.length === 0 ? (
-                    <li className="text-sm text-muted-foreground">No documents uploaded.</li>
-                  ) : (
-                    detail.documents.map((doc) => (
-                      <li
-                        key={doc.id}
-                        className="flex items-center justify-between gap-3 rounded-md border bg-secondary px-3 py-2"
-                      >
-                        <span className="truncate text-sm">{doc.file_name}</span>
-                        {doc.url ? (
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-semibold text-primary underline"
-                          >
-                            View
-                          </a>
-                        ) : null}
-                      </li>
-                    ))
-                  )}
-                </ul>
-
-                <div className="mt-5 space-y-3">
-                  <Textarea
-                    rows={3}
-                    maxLength={1000}
-                    placeholder="Optional reason / feedback (shown only inside the applicant's dashboard)"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      disabled={reviewMutation.isPending}
-                      onClick={() => reviewMutation.mutate("accepted")}
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      disabled={reviewMutation.isPending}
-                      onClick={() => reviewMutation.mutate("rejected")}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
+                  ))
+                )}
+              </div>
+              <Textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Reply to this applicant..." />
+              <Button
+                disabled={busy || !reply.trim()}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await replyTo({ data: { applicantId: detail.profile.id, body: reply.trim() } });
+                    toast.success("Message sent.");
+                    setReply("");
+                    await openApplicant(detail.profile.id);
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not send.");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Send
+              </Button>
+            </div>
           </section>
-        ) : null}
+        ) : view === "home" ? (
+          <div className="space-y-6">
+            <section className="rounded-xl bg-hero p-6 text-primary-foreground shadow-soft">
+              <h1 className="text-2xl font-bold sm:text-3xl">Admin dashboard</h1>
+              <p className="mt-1 text-sm opacity-90">Review submitted applications and respond to applicants.</p>
+            </section>
+
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {boxes.map((box) => (
+                <button
+                  key={box.key}
+                  type="button"
+                  onClick={() => setView(box.key)}
+                  className="rounded-xl border-t-4 border-accent bg-card p-4 text-left shadow-soft"
+                >
+                  <p className="text-3xl font-bold text-primary">{box.value}</p>
+                  <p className="text-sm text-muted-foreground">{box.label}</p>
+                </button>
+              ))}
+            </div>
+
+            <section className="rounded-xl border bg-card p-5 shadow-soft">
+              <h2 className="text-lg font-bold text-primary">Analytics</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg bg-secondary p-3">
+                  <p className="text-2xl font-bold text-primary">{totals.thisWeek}</p>
+                  <p className="text-xs text-muted-foreground">Applications this week</p>
+                </div>
+                <div className="rounded-lg bg-secondary p-3">
+                  <p className="text-2xl font-bold text-primary">{totals.acceptanceRate}%</p>
+                  <p className="text-xs text-muted-foreground">Acceptance rate</p>
+                </div>
+                <div className="rounded-lg bg-secondary p-3">
+                  <p className="text-2xl font-bold text-primary">{totals.employed}</p>
+                  <p className="text-xs text-muted-foreground">Employed applicants</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : view === "messages" ? (
+          <section className="rounded-xl border bg-card p-5 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl font-bold text-primary sm:text-2xl">Applicant messages</h1>
+              <Button
+                variant="outline"
+                className="border-primary text-primary"
+                onClick={async () => {
+                  await markInbox({});
+                  await load();
+                }}
+              >
+                Mark all read
+              </Button>
+            </div>
+            <ul className="mt-4 space-y-2">
+              {inbox.length === 0 ? (
+                <li className="text-sm text-muted-foreground">No messages yet.</li>
+              ) : (
+                inbox.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => openApplicant(m.user_id)}
+                      className={`w-full rounded-lg p-4 text-left ${
+                        m.read_by_admin ? "border bg-secondary" : "border-l-4 border-accent bg-card shadow-soft"
+                      }`}
+                    >
+                      <p className="font-semibold text-primary">{m.full_name}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{m.body}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString()}</p>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
+        ) : view === "notifications" ? (
+          <section className="space-y-6">
+            <h1 className="text-2xl font-bold text-primary">Notifications</h1>
+            <div>
+              <h2 className="font-semibold text-primary">Unread ({unreadNotes})</h2>
+              <ul className="mt-2 space-y-2">
+                {notes.filter((n) => !n.read).length === 0 ? (
+                  <li className="text-sm text-muted-foreground">Nothing unread.</li>
+                ) : (
+                  notes.filter((n) => !n.read).map((n) => (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await supabase.from("notifications").update({ read: true }).eq("id", n.id);
+                          setNotes((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                        }}
+                        className="w-full rounded-lg border-l-4 border-accent bg-card p-4 text-left shadow-soft"
+                      >
+                        <p className="font-semibold text-primary">{n.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+            <div>
+              <h2 className="font-semibold text-primary">Read</h2>
+              <ul className="mt-2 space-y-2">
+                {notes.filter((n) => n.read).map((n) => (
+                  <li key={n.id} className="rounded-lg border bg-secondary p-4">
+                    <p className="font-semibold">{n.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        ) : (
+          listView
+        )}
       </main>
       <PortalFooter />
     </div>
