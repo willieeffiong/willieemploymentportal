@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
@@ -18,11 +17,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
-const VerifyRoute = VerifyRouteImport.update({
-  id: '/verify',
-  path: '/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -63,7 +57,6 @@ export interface FileRoutesByFullPath {
   '/admin-login': typeof AdminLoginRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/verify': typeof VerifyRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
 }
@@ -72,7 +65,6 @@ export interface FileRoutesByTo {
   '/admin-login': typeof AdminLoginRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/verify': typeof VerifyRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
 }
@@ -83,7 +75,6 @@ export interface FileRoutesById {
   '/admin-login': typeof AdminLoginRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/verify': typeof VerifyRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
 }
@@ -94,18 +85,10 @@ export interface FileRouteTypes {
     | '/admin-login'
     | '/login'
     | '/register'
-    | '/verify'
     | '/admin'
     | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/admin-login'
-    | '/login'
-    | '/register'
-    | '/verify'
-    | '/admin'
-    | '/dashboard'
+  to: '/' | '/admin-login' | '/login' | '/register' | '/admin' | '/dashboard'
   id:
     | '__root__'
     | '/'
@@ -113,7 +96,6 @@ export interface FileRouteTypes {
     | '/admin-login'
     | '/login'
     | '/register'
-    | '/verify'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
   fileRoutesById: FileRoutesById
@@ -124,18 +106,10 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
-  VerifyRoute: typeof VerifyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/verify': {
-      id: '/verify'
-      path: '/verify'
-      fullPath: '/verify'
-      preLoaderRoute: typeof VerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -207,7 +181,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
-  VerifyRoute: VerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
