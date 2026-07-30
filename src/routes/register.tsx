@@ -57,7 +57,7 @@ function RegisterPage() {
         return;
       }
       toast.success("Your account has been created successfully.");
-      navigate({ to: "/dashboard", search: { view: "home" } });
+      navigate({ to: "/dashboard" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Registration failed.");
     } finally {

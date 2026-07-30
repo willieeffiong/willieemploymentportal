@@ -40,7 +40,7 @@ function LoginPage() {
       });
       if (error) throw new Error("Incorrect email or password.");
       toast.success("Welcome back!");
-      navigate({ to: "/dashboard", search: { view: "home" } });
+      navigate({ to: "/dashboard" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed.");
     } finally {
