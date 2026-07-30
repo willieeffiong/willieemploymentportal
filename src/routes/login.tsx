@@ -34,27 +34,13 @@ function LoginPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
       if (error) throw new Error("Incorrect email or password.");
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("email_verified")
-        .eq("id", data.user.id)
-        .maybeSingle();
-
-      if (profile && !profile.email_verified) {
-        await supabase.auth.signOut();
-        toast.error("Please verify your account first.");
-        navigate({ to: "/verify", search: { email: email.trim().toLowerCase() } });
-        return;
-      }
-
       toast.success("Welcome back!");
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/dashboard", search: { view: "home" } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed.");
     } finally {
