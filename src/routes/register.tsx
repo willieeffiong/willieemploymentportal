@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { registerApplicant } from "@/lib/portal.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { PortalFooter, PortalHeader } from "@/components/PortalChrome";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,23 +33,31 @@ function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (fullName.trim().length < 2) return toast.error("Please enter your full name.");
     if (password.length < 8) return toast.error("Password must be at least 8 characters.");
+    if (password !== confirmPassword) return toast.error("Passwords do not match");
+
     setLoading(true);
     try {
-      const result = await register({ data: { fullName, email, password } });
-      if (result.fallbackCode) {
-        toast.warning(`Email sending is not set up yet. Your code is ${result.fallbackCode}`, {
-          duration: 20000,
-        });
-      } else {
-        toast.success("We sent a 6-digit code to your email.");
+      await register({ data: { fullName, email, password } });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (error) {
+        toast.success("Your account has been created. Please log in.");
+        navigate({ to: "/login" });
+        return;
       }
-      navigate({ to: "/verify", search: { email: email.trim().toLowerCase() } });
+      toast.success("Your account has been created successfully.");
+      navigate({ to: "/dashboard", search: { view: "home" } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Registration failed.");
     } finally {
@@ -87,7 +96,24 @@ function RegisterPage() {
             />
             <p className="text-xs text-muted-foreground">At least 8 characters.</p>
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              maxLength={72}
+              aria-invalid={mismatch}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            {mismatch ? <p className="text-xs font-semibold text-destructive">Passwords do not match</p> : null}
+          </div>
+          <Button
+            type="submit"
+            disabled={loading || mismatch || !confirmPassword}
+            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+          >
             {loading ? "Creating account..." : "Register"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
