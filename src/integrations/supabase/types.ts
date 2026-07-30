@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_by_admin: boolean
+          read_by_user: boolean
+          sender: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_by_admin?: boolean
+          read_by_user?: boolean
+          sender?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_by_admin?: boolean
+          read_by_user?: boolean
+          sender?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -73,57 +103,72 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           date_of_birth: string | null
           email: string
           email_verified: boolean
+          employment_status: string
+          engineering_field: string | null
           full_name: string
           gender: string | null
           id: string
           lga: string | null
           notes: string | null
+          phone: string | null
           qualification: string | null
           review_reason: string | null
           reviewed_at: string | null
           state: string | null
           status: Database["public"]["Enums"]["application_status"]
           submitted_at: string | null
+          terms_accepted: boolean
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           date_of_birth?: string | null
           email?: string
           email_verified?: boolean
+          employment_status?: string
+          engineering_field?: string | null
           full_name?: string
           gender?: string | null
           id: string
           lga?: string | null
           notes?: string | null
+          phone?: string | null
           qualification?: string | null
           review_reason?: string | null
           reviewed_at?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           submitted_at?: string | null
+          terms_accepted?: boolean
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           date_of_birth?: string | null
           email?: string
           email_verified?: boolean
+          employment_status?: string
+          engineering_field?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           lga?: string | null
           notes?: string | null
+          phone?: string | null
           qualification?: string | null
           review_reason?: string | null
           reviewed_at?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           submitted_at?: string | null
+          terms_accepted?: boolean
           updated_at?: string
         }
         Relationships: []

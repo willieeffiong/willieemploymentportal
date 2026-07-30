@@ -8,38 +8,31 @@ const registerSchema = z.object({
   password: z.string().min(8).max(72),
 });
 
-const verifySchema = z.object({
-  email: z.string().trim().email().max(255),
-  code: z.string().trim().regex(/^\d{6}$/),
-});
-
-const emailSchema = z.object({ email: z.string().trim().email().max(255) });
-
 const reviewSchema = z.object({
   applicantId: z.string().uuid(),
   decision: z.enum(["accepted", "rejected"]),
   reason: z.string().trim().max(1000).optional(),
 });
 
+const bulkReviewSchema = z.object({
+  applicantIds: z.array(z.string().uuid()).min(1).max(200),
+  decision: z.enum(["accepted", "rejected"]),
+  reason: z.string().trim().max(1000).optional(),
+});
+
+const employmentSchema = z.object({
+  applicantId: z.string().uuid(),
+  employmentStatus: z.enum(["pending", "employed", "not_qualified"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+const messageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
+
 export const registerApplicant = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => registerSchema.parse(data))
   .handler(async ({ data }) => {
     const { register } = await import("./portal-actions.server");
     return register(data);
-  });
-
-export const verifyAccount = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => verifySchema.parse(data))
-  .handler(async ({ data }) => {
-    const { verify } = await import("./portal-actions.server");
-    return verify(data);
-  });
-
-export const resendCode = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => emailSchema.parse(data))
-  .handler(async ({ data }) => {
-    const { resend } = await import("./portal-actions.server");
-    return resend(data.email);
   });
 
 export const ensureAdminAccount = createServerFn({ method: "POST" }).handler(async () => {
@@ -68,6 +61,54 @@ export const reviewApplicant = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { adminReview } = await import("./portal-actions.server");
     return adminReview(context.userId, data);
+  });
+
+export const bulkReviewApplicants = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => bulkReviewSchema.parse(data))
+  .handler(async ({ context, data }) => {
+    const { adminBulkReview } = await import("./portal-actions.server");
+    return adminBulkReview(context.userId, data);
+  });
+
+export const setEmploymentStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => employmentSchema.parse(data))
+  .handler(async ({ context, data }) => {
+    const { adminSetEmployment } = await import("./portal-actions.server");
+    return adminSetEmployment(context.userId, data);
+  });
+
+export const adminReplyToApplicant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ applicantId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { adminSendMessage } = await import("./portal-actions.server");
+    return adminSendMessage(context.userId, data);
+  });
+
+export const adminMessageInbox = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { adminInbox } = await import("./portal-actions.server");
+    return adminInbox(context.userId);
+  });
+
+export const adminMarkMessagesRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { adminMarkInboxRead } = await import("./portal-actions.server");
+    return adminMarkInboxRead(context.userId);
+  });
+
+export const sendMessageToAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => messageSchema.parse(data))
+  .handler(async ({ context, data }) => {
+    const { sendUserMessage } = await import("./portal-actions.server");
+    return sendUserMessage(context.userId, data.body);
   });
 
 export const submitApplicationFn = createServerFn({ method: "POST" })

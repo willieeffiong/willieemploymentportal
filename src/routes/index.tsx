@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import logoAsset from "@/assets/logo.asset.json";
 import officeAsset from "@/assets/office.asset.json";
 import sponsorAsset from "@/assets/sponsor.asset.json";
 import { Button } from "@/components/ui/button";
-import { PortalFooter } from "@/components/PortalChrome";
+import { PortalFooter, PortalLogo } from "@/components/PortalChrome";
+import { DeadlineCountdown } from "@/components/DeadlineCountdown";
+import { ENGINEERING_FIELDS } from "@/lib/portal-data";
 
 const title = "WILLIE LAB TECH — Engineering Empowerment Portal";
 const description =
@@ -28,23 +29,22 @@ function Home() {
     <div className="min-h-screen bg-background">
       <div className="bg-hero pb-10 text-primary-foreground">
         <div className="mx-auto max-w-3xl px-4 pt-10 text-center">
-          <img
-            src={logoAsset.url}
-            alt="Will's Photographic Studio Ltd logo"
-            className="mx-auto h-36 w-36 rounded-full ring-4 ring-accent sm:h-44 sm:w-44"
-          />
+          <PortalLogo className="h-36 w-36 sm:h-44 sm:w-44" />
 
           <img
             src={officeAsset.url}
             alt="Engr. Willie Effiong working at his office desk"
             className="mx-auto mt-8 w-full max-w-md rounded-xl border-4 border-accent object-cover shadow-glow"
-            loading="lazy"
           />
 
           <h1 className="mt-8 text-4xl font-bold tracking-wide sm:text-5xl">WILLIE LAB TECH</h1>
           <p className="mt-2 text-sm opacity-90 sm:text-base">
             Employment empowerment portal for young engineers
           </p>
+
+          <div className="mx-auto mt-6 max-w-sm">
+            <DeadlineCountdown tone="dark" />
+          </div>
 
           <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3">
             <Button
@@ -69,6 +69,9 @@ function Home() {
             >
               <Link to="/admin-login">Login as Admin</Link>
             </Button>
+            <Link to="/help" className="text-sm font-semibold underline opacity-90">
+              Contact / Help
+            </Link>
           </div>
         </div>
       </div>
@@ -95,6 +98,31 @@ function Home() {
             Sponsor — Engr. Willie Effiong
           </figcaption>
         </figure>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 pb-14">
+        <h2 className="text-center text-2xl font-bold text-primary sm:text-3xl">Engineering Fields We Recruit</h2>
+        <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
+          Twenty engineering disciplines are open for this recruitment drive.
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {ENGINEERING_FIELDS.map((field) => (
+            <article key={field.name} className="overflow-hidden rounded-xl border bg-card shadow-soft">
+              <img
+                src={field.image}
+                alt={field.name}
+                width={768}
+                height={512}
+                loading="lazy"
+                className="h-28 w-full object-cover sm:h-32"
+              />
+              <div className="p-3">
+                <h3 className="text-sm font-bold text-primary">{field.name}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{field.blurb}</p>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <PortalFooter />
