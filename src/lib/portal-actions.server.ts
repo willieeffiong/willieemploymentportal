@@ -1,5 +1,13 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ADMIN_EMAIL, ADMIN_PASSWORD, normalizeEmail } from "./portal.server";
+import {
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD,
+  countWords,
+  hashSecurityAnswer,
+  isThreeNames,
+  normalizeEmail,
+} from "./portal.server";
+import { assertApplicationsOpen } from "./portal-auth.server";
 import { sendMail } from "./email.server";
 
 async function assertAdmin(userId: string) {
@@ -23,8 +31,27 @@ async function notifyAdmin(title: string, message: string) {
   await supabaseAdmin.from("notifications").insert({ user_id: id, title, message });
 }
 
-export async function register(input: { fullName: string; email: string; password: string }) {
+export async function register(input: {
+  fullName: string;
+  email: string;
+  password: string;
+  securityQuestion: string;
+  securityAnswer: string;
+}) {
   const email = normalizeEmail(input.email);
+
+  if (!isThreeNames(input.fullName)) {
+    throw new Error("Please enter your full name (first, middle, and surname).");
+  }
+
+  await assertApplicationsOpen();
+
+  const { data: existing } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (existing) throw new Error("An account with this email already exists. Please log in instead.");
 
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
     email,
@@ -35,14 +62,21 @@ export async function register(input: { fullName: string; email: string; passwor
 
   if (error || !created.user) {
     const message = error?.message ?? "Could not create the account";
-    if (/already/i.test(message)) throw new Error("An account with this email already exists.");
+    if (/already/i.test(message)) {
+      throw new Error("An account with this email already exists. Please log in instead.");
+    }
     throw new Error(message);
   }
 
   const userId = created.user.id;
-  await supabaseAdmin
-    .from("profiles")
-    .insert({ id: userId, full_name: input.fullName, email, email_verified: true });
+  await supabaseAdmin.from("profiles").insert({
+    id: userId,
+    full_name: input.fullName.trim(),
+    email,
+    email_verified: true,
+    security_question: input.securityQuestion,
+    security_answer_hash: await hashSecurityAnswer(input.securityAnswer),
+  });
   await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "applicant" });
 
   await supabaseAdmin.from("notifications").insert({
