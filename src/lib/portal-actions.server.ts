@@ -362,13 +362,17 @@ export async function submitApplication(userId: string) {
     .maybeSingle();
   if (!profile) throw new Error("Profile not found");
 
-  const { count } = await supabaseAdmin
+  const { data: docs } = await supabaseAdmin
     .from("documents")
-    .select("id", { count: "exact", head: true })
+    .select("id, category")
     .eq("user_id", userId);
+  const qualificationDocs = (docs ?? []).filter((d) => d.category !== "skill").length;
 
   const missing: string[] = [];
   if (!profile.full_name?.trim()) missing.push("Full name");
+  if (!isThreeNames(profile.full_name ?? "")) {
+    missing.push("Full name must include your first, middle and surname");
+  }
   if (!profile.gender) missing.push("Gender");
   if (!profile.date_of_birth) missing.push("Date of birth");
   if (!profile.phone?.trim()) missing.push("Phone number");
@@ -376,12 +380,23 @@ export async function submitApplication(userId: string) {
   if (!profile.lga?.trim()) missing.push("Local Government Area");
   if (!profile.engineering_field) missing.push("Engineering field");
   if (!profile.qualification) missing.push("Educational qualification");
-  if (!profile.notes || profile.notes.trim().length < 20) missing.push("Notes / skills description (at least 20 characters)");
+
+  const skillWords = countWords(profile.notes);
+  if (skillWords < 30) missing.push(`Skills description — at least 30 words (you have ${skillWords})`);
+  if (skillWords > 300) missing.push("Skills description must not exceed 300 words");
+
+  if (!profile.years_experience) missing.push("Years of experience");
+  const expWords = countWords(profile.experience_notes);
+  if (expWords < 30) missing.push(`Experience description — at least 30 words (you have ${expWords})`);
+  if (expWords > 300) missing.push("Experience description must not exceed 300 words");
+
   if (!profile.terms_accepted) missing.push("Confirmation that your information is accurate");
-  if (!count) missing.push("At least one document (ID / CV / certificate)");
+  if (!qualificationDocs) missing.push("At least one qualification document (ID / CV / certificate)");
 
   if (missing.length) return { submitted: false, missing };
   if (profile.submitted_at) return { submitted: true, missing: [] as string[] };
+
+  await assertApplicationsOpen();
 
   const submittedAt = new Date().toISOString();
   const { error } = await supabaseAdmin.from("profiles").update({ submitted_at: submittedAt }).eq("id", userId);
