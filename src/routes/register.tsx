@@ -4,10 +4,18 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { registerApplicant } from "@/lib/portal.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { SECURITY_QUESTIONS } from "@/lib/portal-data";
 import { PortalFooter, PortalHeader } from "@/components/PortalChrome";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const title = "Register — WILLIE LAB TECH Empowerment Portal";
 const description =
@@ -34,19 +42,28 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
+  const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
 
   const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
+  const nameParts = fullName.trim().split(/\s+/).filter((p) => p.length >= 2);
+  const nameInvalid = fullName.length > 0 && nameParts.length < 3;
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (fullName.trim().length < 2) return toast.error("Please enter your full name.");
+    if (nameParts.length < 3) {
+      return toast.error("Please enter your full name (first, middle, and surname).");
+    }
     if (password.length < 8) return toast.error("Password must be at least 8 characters.");
     if (password !== confirmPassword) return toast.error("Passwords do not match");
+    if (answer.trim().length < 2) return toast.error("Please answer your security question.");
 
     setLoading(true);
     try {
-      await register({ data: { fullName, email, password } });
+      await register({
+        data: { fullName, email, password, securityQuestion: question, securityAnswer: answer },
+      });
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -76,8 +93,21 @@ function RegisterPage() {
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input id="fullName" value={fullName} maxLength={120} onChange={(e) => setFullName(e.target.value)} required />
+            <Label htmlFor="fullName">Full Name (first, middle and surname)</Label>
+            <Input
+              id="fullName"
+              value={fullName}
+              maxLength={120}
+              aria-invalid={nameInvalid}
+              placeholder="e.g. Emeka John Okafor"
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
+            {nameInvalid ? (
+              <p className="text-xs font-semibold text-destructive">
+                Please enter your full name (first, middle, and surname).
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -94,7 +124,7 @@ function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+            <p className="text-xs text-muted-foreground">At least 8 characters. Stored securely and encrypted.</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -109,6 +139,32 @@ function RegisterPage() {
             />
             {mismatch ? <p className="text-xs font-semibold text-destructive">Passwords do not match</p> : null}
           </div>
+
+          <div className="space-y-2 rounded-lg bg-secondary p-3">
+            <Label>Security question (used to recover your password)</Label>
+            <Select value={question} onValueChange={setQuestion}>
+              <SelectTrigger className="bg-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SECURITY_QUESTIONS.map((q) => (
+                  <SelectItem key={q} value={q}>
+                    {q}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Label htmlFor="answer">Your answer</Label>
+            <Input
+              id="answer"
+              className="bg-card"
+              value={answer}
+              maxLength={120}
+              onChange={(e) => setAnswer(e.target.value)}
+              required
+            />
+          </div>
+
           <Button
             type="submit"
             disabled={loading || mismatch || !confirmPassword}

@@ -1,5 +1,13 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ADMIN_EMAIL, ADMIN_PASSWORD, normalizeEmail } from "./portal.server";
+import {
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD,
+  countWords,
+  hashSecurityAnswer,
+  isThreeNames,
+  normalizeEmail,
+} from "./portal.server";
+import { assertApplicationsOpen } from "./portal-auth.server";
 import { sendMail } from "./email.server";
 
 async function assertAdmin(userId: string) {
@@ -23,8 +31,27 @@ async function notifyAdmin(title: string, message: string) {
   await supabaseAdmin.from("notifications").insert({ user_id: id, title, message });
 }
 
-export async function register(input: { fullName: string; email: string; password: string }) {
+export async function register(input: {
+  fullName: string;
+  email: string;
+  password: string;
+  securityQuestion: string;
+  securityAnswer: string;
+}) {
   const email = normalizeEmail(input.email);
+
+  if (!isThreeNames(input.fullName)) {
+    throw new Error("Please enter your full name (first, middle, and surname).");
+  }
+
+  await assertApplicationsOpen();
+
+  const { data: existing } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (existing) throw new Error("An account with this email already exists. Please log in instead.");
 
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
     email,
@@ -35,14 +62,21 @@ export async function register(input: { fullName: string; email: string; passwor
 
   if (error || !created.user) {
     const message = error?.message ?? "Could not create the account";
-    if (/already/i.test(message)) throw new Error("An account with this email already exists.");
+    if (/already/i.test(message)) {
+      throw new Error("An account with this email already exists. Please log in instead.");
+    }
     throw new Error(message);
   }
 
   const userId = created.user.id;
-  await supabaseAdmin
-    .from("profiles")
-    .insert({ id: userId, full_name: input.fullName, email, email_verified: true });
+  await supabaseAdmin.from("profiles").insert({
+    id: userId,
+    full_name: input.fullName.trim(),
+    email,
+    email_verified: true,
+    security_question: input.securityQuestion,
+    security_answer_hash: await hashSecurityAnswer(input.securityAnswer),
+  });
   await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "applicant" });
 
   await supabaseAdmin.from("notifications").insert({
@@ -328,13 +362,17 @@ export async function submitApplication(userId: string) {
     .maybeSingle();
   if (!profile) throw new Error("Profile not found");
 
-  const { count } = await supabaseAdmin
+  const { data: docs } = await supabaseAdmin
     .from("documents")
-    .select("id", { count: "exact", head: true })
+    .select("id, category")
     .eq("user_id", userId);
+  const qualificationDocs = (docs ?? []).filter((d) => d.category !== "skill").length;
 
   const missing: string[] = [];
   if (!profile.full_name?.trim()) missing.push("Full name");
+  if (!isThreeNames(profile.full_name ?? "")) {
+    missing.push("Full name must include your first, middle and surname");
+  }
   if (!profile.gender) missing.push("Gender");
   if (!profile.date_of_birth) missing.push("Date of birth");
   if (!profile.phone?.trim()) missing.push("Phone number");
@@ -342,12 +380,23 @@ export async function submitApplication(userId: string) {
   if (!profile.lga?.trim()) missing.push("Local Government Area");
   if (!profile.engineering_field) missing.push("Engineering field");
   if (!profile.qualification) missing.push("Educational qualification");
-  if (!profile.notes || profile.notes.trim().length < 20) missing.push("Notes / skills description (at least 20 characters)");
+
+  const skillWords = countWords(profile.notes);
+  if (skillWords < 30) missing.push(`Skills description — at least 30 words (you have ${skillWords})`);
+  if (skillWords > 300) missing.push("Skills description must not exceed 300 words");
+
+  if (!profile.years_experience) missing.push("Years of experience");
+  const expWords = countWords(profile.experience_notes);
+  if (expWords < 30) missing.push(`Experience description — at least 30 words (you have ${expWords})`);
+  if (expWords > 300) missing.push("Experience description must not exceed 300 words");
+
   if (!profile.terms_accepted) missing.push("Confirmation that your information is accurate");
-  if (!count) missing.push("At least one document (ID / CV / certificate)");
+  if (!qualificationDocs) missing.push("At least one qualification document (ID / CV / certificate)");
 
   if (missing.length) return { submitted: false, missing };
   if (profile.submitted_at) return { submitted: true, missing: [] as string[] };
+
+  await assertApplicationsOpen();
 
   const submittedAt = new Date().toISOString();
   const { error } = await supabaseAdmin.from("profiles").update({ submitted_at: submittedAt }).eq("id", userId);

@@ -14,8 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          deadline: string
+          id: number
+          manually_closed: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string
+          id?: number
+          manually_closed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string
+          id?: number
+          manually_closed?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
+          category: string
           content_type: string | null
           created_at: string
           file_name: string
@@ -23,8 +107,11 @@ export type Database = {
           file_size: number | null
           id: string
           user_id: string
+          verification_note: string | null
+          verification_status: string
         }
         Insert: {
+          category?: string
           content_type?: string | null
           created_at?: string
           file_name: string
@@ -32,8 +119,11 @@ export type Database = {
           file_size?: number | null
           id?: string
           user_id: string
+          verification_note?: string | null
+          verification_status?: string
         }
         Update: {
+          category?: string
           content_type?: string | null
           created_at?: string
           file_name?: string
@@ -41,6 +131,29 @@ export type Database = {
           file_size?: number | null
           id?: string
           user_id?: string
+          verification_note?: string | null
+          verification_status?: string
+        }
+        Relationships: []
+      }
+      login_attempts: {
+        Row: {
+          email: string
+          failed_count: number
+          locked_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          email: string
+          failed_count?: number
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          email?: string
+          failed_count?: number
+          locked_until?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -107,9 +220,11 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           email: string
+          email_notifications: boolean
           email_verified: boolean
           employment_status: string
           engineering_field: string | null
+          experience_notes: string | null
           full_name: string
           gender: string | null
           id: string
@@ -119,20 +234,25 @@ export type Database = {
           qualification: string | null
           review_reason: string | null
           reviewed_at: string | null
+          security_answer_hash: string | null
+          security_question: string | null
           state: string | null
           status: Database["public"]["Enums"]["application_status"]
           submitted_at: string | null
           terms_accepted: boolean
           updated_at: string
+          years_experience: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           date_of_birth?: string | null
           email?: string
+          email_notifications?: boolean
           email_verified?: boolean
           employment_status?: string
           engineering_field?: string | null
+          experience_notes?: string | null
           full_name?: string
           gender?: string | null
           id: string
@@ -142,20 +262,25 @@ export type Database = {
           qualification?: string | null
           review_reason?: string | null
           reviewed_at?: string | null
+          security_answer_hash?: string | null
+          security_question?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           submitted_at?: string | null
           terms_accepted?: boolean
           updated_at?: string
+          years_experience?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           date_of_birth?: string | null
           email?: string
+          email_notifications?: boolean
           email_verified?: boolean
           employment_status?: string
           engineering_field?: string | null
+          experience_notes?: string | null
           full_name?: string
           gender?: string | null
           id?: string
@@ -165,11 +290,14 @@ export type Database = {
           qualification?: string | null
           review_reason?: string | null
           reviewed_at?: string | null
+          security_answer_hash?: string | null
+          security_question?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           submitted_at?: string | null
           terms_accepted?: boolean
           updated_at?: string
+          years_experience?: string | null
         }
         Relationships: []
       }
