@@ -18,8 +18,8 @@ export function PortalLogo({ className = "h-11 w-11" }: { className?: string }) 
     >
       <img
         src={logoAsset.url}
-        alt="Will's Photographic Studio Ltd logo"
-        className="h-full w-full rounded-full object-contain"
+        alt="Willie Lab Tech logo"
+        className="h-full w-full scale-105 rounded-full object-cover"
       />
     </span>
   );
