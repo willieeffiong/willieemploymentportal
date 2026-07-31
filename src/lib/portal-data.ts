@@ -19,45 +19,7 @@ import software from "@/assets/fields/software.jpg";
 import structural from "@/assets/fields/structural.jpg";
 import telecom from "@/assets/fields/telecom.jpg";
 
-export const NIGERIAN_STATES = [
-  "Abia",
-  "Adamawa",
-  "Akwa Ibom",
-  "Anambra",
-  "Bauchi",
-  "Bayelsa",
-  "Benue",
-  "Borno",
-  "Cross River",
-  "Delta",
-  "Ebonyi",
-  "Edo",
-  "Ekiti",
-  "Enugu",
-  "FCT - Abuja",
-  "Gombe",
-  "Imo",
-  "Jigawa",
-  "Kaduna",
-  "Kano",
-  "Katsina",
-  "Kebbi",
-  "Kogi",
-  "Kwara",
-  "Lagos",
-  "Nasarawa",
-  "Niger",
-  "Ogun",
-  "Ondo",
-  "Osun",
-  "Oyo",
-  "Plateau",
-  "Rivers",
-  "Sokoto",
-  "Taraba",
-  "Yobe",
-  "Zamfara",
-];
+export { NIGERIAN_STATES, NIGERIA_STATES_LGAS, lgasForState } from "./nigeria-lga";
 
 export const QUALIFICATIONS = [
   "SSCE / WAEC",
@@ -68,6 +30,33 @@ export const QUALIFICATIONS = [
   "PhD",
   "Professional Certification",
 ];
+
+export const EXPERIENCE_LEVELS = [
+  "None",
+  "Less than 1 year",
+  "1 - 2 years",
+  "3 - 5 years",
+  "6 - 10 years",
+  "More than 10 years",
+];
+
+export const SECURITY_QUESTIONS = [
+  "What is your mother's maiden name?",
+  "What was the name of your first school?",
+  "What is the name of your home town?",
+  "What was your childhood nickname?",
+  "What is the name of your favourite teacher?",
+  "What is your father's middle name?",
+];
+
+/** Minimum and maximum words for the skills and experience descriptions. */
+export const MIN_WORDS = 30;
+export const MAX_WORDS = 300;
+
+export function countWords(value: string | null | undefined): number {
+  if (!value) return 0;
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
 
 export interface EngineeringField {
   name: string;
@@ -100,11 +89,20 @@ export const ENGINEERING_FIELDS: EngineeringField[] = [
 
 export const ENGINEERING_FIELD_NAMES = ENGINEERING_FIELDS.map((f) => f.name);
 
-/** Applications close 10 August 2026, end of day. */
-export const APPLICATION_DEADLINE = new Date("2026-08-10T23:59:59Z");
+/** Fallback deadline used before the live application period loads. */
+export const APPLICATION_DEADLINE = new Date("2026-08-10T23:59:59+01:00");
 
 export const EMPLOYMENT_LABELS: Record<string, string> = {
   pending: "Pending",
   employed: "Employed",
   not_qualified: "Not qualified",
 };
+
+export const PROGRAMME_FACTS = `WILLIE LAB TECH Empowerment Portal.
+Sponsor and owner: Engr. Willie Effiong.
+Purpose: empower young Nigerian engineers to fit into their field and find opportunities.
+Target: 10,000 engineers across 20 engineering fields.
+Application window: 29 July 2026 to 10 August 2026 (the admin can extend, close or reopen it).
+Applicants register, complete a profile, upload qualification documents, and submit.
+The admin reviews and accepts or rejects each application, and can also set an employment status of Pending, Employed or Not qualified.
+Fields recruited: ${ENGINEERING_FIELD_NAMES.join(", ")}.`;
