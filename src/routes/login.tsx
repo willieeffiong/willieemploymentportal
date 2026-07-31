@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { checkLoginAllowed, reportLoginResult } from "@/lib/portal.functions";
 import { PortalFooter, PortalHeader } from "@/components/PortalChrome";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,8 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const checkAllowed = useServerFn(checkLoginAllowed);
+  const reportResult = useServerFn(reportLoginResult);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,12 +37,21 @@ function LoginPage() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
-      if (error) throw new Error("Incorrect email or password.");
+      await checkAllowed({ data: { email: cleanEmail } });
+
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+
+      if (error) {
+        const result = await reportResult({ data: { email: cleanEmail, success: false } });
+        if (result.locked) {
+          throw new Error("Too many failed attempts. Your account is locked for 15 minutes.");
+        }
+        throw new Error(`Incorrect email or password. ${result.remaining} attempt(s) left before lockout.`);
+      }
+
+      await reportResult({ data: { email: cleanEmail, success: true } });
       toast.success("Welcome back!");
       navigate({ to: "/dashboard" });
     } catch (error) {
@@ -65,6 +78,11 @@ function LoginPage() {
           <Button type="submit" disabled={loading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
             {loading ? "Signing in..." : "Login"}
           </Button>
+          <p className="text-center text-sm">
+            <Link to="/forgot-password" className="font-semibold text-primary underline">
+              Forgot your password?
+            </Link>
+          </p>
           <p className="text-center text-sm text-muted-foreground">
             No account yet?{" "}
             <Link to="/register" className="font-semibold text-primary underline">
