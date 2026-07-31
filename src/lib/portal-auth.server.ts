@@ -143,7 +143,7 @@ export async function assertApplicationsOpen() {
 }
 
 export async function setApplicationPeriod(input: { deadline?: string; manuallyClosed?: boolean }) {
-  const patch: Record<string, unknown> = {};
+  const patch: { deadline?: string; manually_closed?: boolean } = {};
   if (input.deadline) patch.deadline = input.deadline;
   if (typeof input.manuallyClosed === "boolean") patch.manually_closed = input.manuallyClosed;
   if (Object.keys(patch).length === 0) return getApplicationPeriod();
