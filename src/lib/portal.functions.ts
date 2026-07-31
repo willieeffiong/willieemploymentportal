@@ -6,6 +6,8 @@ const registerSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
+  securityQuestion: z.string().trim().min(5).max(200),
+  securityAnswer: z.string().trim().min(2).max(120),
 });
 
 const reviewSchema = z.object({
