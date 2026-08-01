@@ -7,16 +7,24 @@ import {
   adminMarkMessagesRead,
   adminMessageInbox,
   adminReplyToApplicant,
+  assistantAsk,
+  assistantThreadMessages,
+  assistantThreads,
   bulkReviewApplicants,
+  fetchApplicationPeriod,
   getApplicant,
   listApplicants,
   reviewApplicant,
+  saveApplicationPeriod,
   setEmploymentStatus,
+  updatePassword,
+  updateSecurityQuestion,
 } from "@/lib/portal.functions";
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
-import { EMPLOYMENT_LABELS } from "@/lib/portal-data";
+import { EMPLOYMENT_LABELS, SECURITY_QUESTIONS } from "@/lib/portal-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
