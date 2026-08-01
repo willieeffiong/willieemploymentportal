@@ -49,8 +49,8 @@ const title = "Applicant Dashboard — WILLIE LAB TECH";
 const description = "Manage your Willie Lab Tech empowerment application, documents and messages.";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    v: typeof search.v === "string" ? search.v : "home",
+  validateSearch: (search: Record<string, unknown>): { v?: string } => ({
+    v: typeof search.v === "string" ? search.v : undefined,
   }),
   head: () => ({
     meta: [
