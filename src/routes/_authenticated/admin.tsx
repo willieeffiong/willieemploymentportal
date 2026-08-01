@@ -34,6 +34,9 @@ const title = "Admin Dashboard — WILLIE LAB TECH";
 const description = "Review Willie Lab Tech applicants, decisions, messages and analytics.";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  validateSearch: (search: Record<string, unknown>): { v?: string } => ({
+    v: typeof search.v === "string" ? search.v : undefined,
+  }),
   head: () => ({
     meta: [
       { title },
@@ -55,7 +58,10 @@ const MENU = [
   { key: "rejected", label: "Rejected" },
   { key: "pending", label: "Pending" },
   { key: "messages", label: "Feedback / Messages" },
+  { key: "assistant", label: "Research Assistant" },
+  { key: "period", label: "Manage Application Period" },
   { key: "notifications", label: "Notifications" },
+  { key: "settings", label: "Settings" },
 ];
 
 type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
