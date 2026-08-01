@@ -86,8 +86,16 @@ function AdminDashboard() {
   const fetchInbox = useServerFn(adminMessageInbox);
   const markInbox = useServerFn(adminMarkMessagesRead);
   const replyTo = useServerFn(adminReplyToApplicant);
+  const loadPeriod = useServerFn(fetchApplicationPeriod);
+  const savePeriod = useServerFn(saveApplicationPeriod);
+  const changePwd = useServerFn(updatePassword);
+  const changeQuestion = useServerFn(updateSecurityQuestion);
+  const ask = useServerFn(assistantAsk);
+  const listThreads = useServerFn(assistantThreads);
+  const loadThreadMessages = useServerFn(assistantThreadMessages);
 
-  const [view, setView] = useState("home");
+  const routeSearch = Route.useSearch();
+  const view = routeSearch.v ?? "home";
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [totals, setTotals] = useState({
     total: 0,
@@ -107,6 +115,23 @@ function AdminDashboard() {
   const [reason, setReason] = useState("");
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const [period, setPeriod] = useState({ opensAt: "", closesAt: "", closedEarly: false, open: true });
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
+  const [answer, setAnswer] = useState("");
+
+  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [turns, setTurns] = useState<{ id: string; role: string; content: string }[]>([]);
+  const [assistantInput, setAssistantInput] = useState("");
+
+  function setView(key: string) {
+    setDetail(null);
+    setSelected([]);
+    navigate({ to: "/admin", search: { v: key } });
+  }
 
   const load = useCallback(async () => {
     try {
