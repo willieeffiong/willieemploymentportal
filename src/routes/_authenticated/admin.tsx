@@ -430,6 +430,7 @@ function AdminDashboard() {
                 ["LGA", detail.profile.lga ?? "-"],
                 ["Engineering field", detail.profile.engineering_field ?? "-"],
                 ["Qualification", detail.profile.qualification ?? "-"],
+                ["Years of experience", detail.profile.years_experience ?? "-"],
                 ["Employment", EMPLOYMENT_LABELS[detail.profile.employment_status] ?? detail.profile.employment_status],
               ].map(([k, v]) => (
                 <div key={k as string} className="rounded-lg bg-secondary p-3">
@@ -442,6 +443,11 @@ function AdminDashboard() {
             <div className="mt-4 rounded-lg bg-secondary p-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase">Skills / notes</p>
               <p className="mt-1 text-sm whitespace-pre-wrap">{detail.profile.notes ?? "-"}</p>
+            </div>
+
+            <div className="mt-4 rounded-lg bg-secondary p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Experience</p>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{detail.profile.experience_notes ?? "-"}</p>
             </div>
 
             <div className="mt-4">
