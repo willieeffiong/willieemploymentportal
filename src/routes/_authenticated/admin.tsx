@@ -116,7 +116,8 @@ function AdminDashboard() {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const [period, setPeriod] = useState({ opensAt: "", closesAt: "", closedEarly: false, open: true });
+  const [period, setPeriod] = useState({ deadline: "", manuallyClosed: false, open: true });
+  const [deadlineInput, setDeadlineInput] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
@@ -156,6 +157,86 @@ function AdminDashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void loadPeriod().then((p) => {
+      setPeriod(p);
+      setDeadlineInput(p.deadline.slice(0, 10));
+    });
+  }, [loadPeriod]);
+
+  useEffect(() => {
+    if (view !== "assistant") return;
+    void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
+  }, [view, listThreads]);
+
+  async function applyPeriod(patch: { deadline?: string; manuallyClosed?: boolean }) {
+    setBusy(true);
+    try {
+      const next = await savePeriod({ data: patch });
+      setPeriod(next);
+      setDeadlineInput(next.deadline.slice(0, 10));
+      toast.success("Application period updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the period.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function savePassword() {
+    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters.");
+    if (newPassword !== confirmPassword) return toast.error("Passwords do not match");
+    setBusy(true);
+    try {
+      await changePwd({ data: { newPassword } });
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password changed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not change your password.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveQuestion() {
+    if (answer.trim().length < 2) return toast.error("Enter your answer.");
+    setBusy(true);
+    try {
+      await changeQuestion({ data: { question, answer } });
+      setAnswer("");
+      toast.success("Security question updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update your security question.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendToAssistant() {
+    const text = assistantInput.trim();
+    if (!text) return;
+    setAssistantInput("");
+    setTurns((prev) => [...prev, { id: `local-${Date.now()}`, role: "user", content: text }]);
+    setBusy(true);
+    try {
+      const result = await ask({ data: { threadId, message: text } });
+      setThreadId(result.threadId);
+      setTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: result.reply }]);
+      void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The assistant could not answer.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openThread(id: string) {
+    setThreadId(id);
+    const rows = await loadThreadMessages({ data: { threadId: id } });
+    setTurns(rows as { id: string; role: string; content: string }[]);
+  }
 
   const unreadNotes = notes.filter((n) => !n.read).length;
   const bellCount = unreadNotes + inboxUnread;
@@ -315,11 +396,7 @@ function AdminDashboard() {
         items={MENU}
         active={view}
         unread={bellCount}
-        onSelect={(key) => {
-          setDetail(null);
-          setSelected([]);
-          setView(key);
-        }}
+        onSelect={setView}
         onLogout={handleLogout}
       />
 
