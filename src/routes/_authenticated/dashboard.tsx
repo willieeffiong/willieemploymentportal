@@ -154,7 +154,7 @@ function WordCounter({ value }: { value: string }) {
 function Dashboard() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const view = search.v;
+  const view = search.v ?? "home";
 
   const submitApp = useServerFn(submitApplicationFn);
   const sendMsg = useServerFn(sendMessageToAdmin);
