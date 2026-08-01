@@ -7,16 +7,24 @@ import {
   adminMarkMessagesRead,
   adminMessageInbox,
   adminReplyToApplicant,
+  assistantAsk,
+  assistantThreadMessages,
+  assistantThreads,
   bulkReviewApplicants,
+  fetchApplicationPeriod,
   getApplicant,
   listApplicants,
   reviewApplicant,
+  saveApplicationPeriod,
   setEmploymentStatus,
+  updatePassword,
+  updateSecurityQuestion,
 } from "@/lib/portal.functions";
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
-import { EMPLOYMENT_LABELS } from "@/lib/portal-data";
+import { EMPLOYMENT_LABELS, SECURITY_QUESTIONS } from "@/lib/portal-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +34,9 @@ const title = "Admin Dashboard — WILLIE LAB TECH";
 const description = "Review Willie Lab Tech applicants, decisions, messages and analytics.";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  validateSearch: (search: Record<string, unknown>): { v?: string } => ({
+    v: typeof search.v === "string" ? search.v : undefined,
+  }),
   head: () => ({
     meta: [
       { title },
@@ -47,7 +58,10 @@ const MENU = [
   { key: "rejected", label: "Rejected" },
   { key: "pending", label: "Pending" },
   { key: "messages", label: "Feedback / Messages" },
+  { key: "assistant", label: "Research Assistant" },
+  { key: "period", label: "Manage Application Period" },
   { key: "notifications", label: "Notifications" },
+  { key: "settings", label: "Settings" },
 ];
 
 type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
@@ -72,8 +86,16 @@ function AdminDashboard() {
   const fetchInbox = useServerFn(adminMessageInbox);
   const markInbox = useServerFn(adminMarkMessagesRead);
   const replyTo = useServerFn(adminReplyToApplicant);
+  const loadPeriod = useServerFn(fetchApplicationPeriod);
+  const savePeriod = useServerFn(saveApplicationPeriod);
+  const changePwd = useServerFn(updatePassword);
+  const changeQuestion = useServerFn(updateSecurityQuestion);
+  const ask = useServerFn(assistantAsk);
+  const listThreads = useServerFn(assistantThreads);
+  const loadThreadMessages = useServerFn(assistantThreadMessages);
 
-  const [view, setView] = useState("home");
+  const routeSearch = Route.useSearch();
+  const view = routeSearch.v ?? "home";
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [totals, setTotals] = useState({
     total: 0,
@@ -93,6 +115,24 @@ function AdminDashboard() {
   const [reason, setReason] = useState("");
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const [period, setPeriod] = useState({ deadline: "", manuallyClosed: false, open: true });
+  const [deadlineInput, setDeadlineInput] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
+  const [answer, setAnswer] = useState("");
+
+  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [turns, setTurns] = useState<{ id: string; role: string; content: string }[]>([]);
+  const [assistantInput, setAssistantInput] = useState("");
+
+  function setView(key: string) {
+    setDetail(null);
+    setSelected([]);
+    navigate({ to: "/admin", search: { v: key } });
+  }
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +157,86 @@ function AdminDashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void loadPeriod().then((p) => {
+      setPeriod(p);
+      setDeadlineInput(p.deadline.slice(0, 10));
+    });
+  }, [loadPeriod]);
+
+  useEffect(() => {
+    if (view !== "assistant") return;
+    void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
+  }, [view, listThreads]);
+
+  async function applyPeriod(patch: { deadline?: string; manuallyClosed?: boolean }) {
+    setBusy(true);
+    try {
+      const next = await savePeriod({ data: patch });
+      setPeriod(next);
+      setDeadlineInput(next.deadline.slice(0, 10));
+      toast.success("Application period updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the period.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function savePassword() {
+    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters.");
+    if (newPassword !== confirmPassword) return toast.error("Passwords do not match");
+    setBusy(true);
+    try {
+      await changePwd({ data: { newPassword } });
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password changed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not change your password.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveQuestion() {
+    if (answer.trim().length < 2) return toast.error("Enter your answer.");
+    setBusy(true);
+    try {
+      await changeQuestion({ data: { question, answer } });
+      setAnswer("");
+      toast.success("Security question updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update your security question.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendToAssistant() {
+    const text = assistantInput.trim();
+    if (!text) return;
+    setAssistantInput("");
+    setTurns((prev) => [...prev, { id: `local-${Date.now()}`, role: "user", content: text }]);
+    setBusy(true);
+    try {
+      const result = await ask({ data: { threadId, message: text } });
+      setThreadId(result.threadId);
+      setTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: result.reply }]);
+      void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The assistant could not answer.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openThread(id: string) {
+    setThreadId(id);
+    const rows = await loadThreadMessages({ data: { threadId: id } });
+    setTurns(rows as { id: string; role: string; content: string }[]);
+  }
 
   const unreadNotes = notes.filter((n) => !n.read).length;
   const bellCount = unreadNotes + inboxUnread;
@@ -276,11 +396,7 @@ function AdminDashboard() {
         items={MENU}
         active={view}
         unread={bellCount}
-        onSelect={(key) => {
-          setDetail(null);
-          setSelected([]);
-          setView(key);
-        }}
+        onSelect={setView}
         onLogout={handleLogout}
       />
 
@@ -314,6 +430,7 @@ function AdminDashboard() {
                 ["LGA", detail.profile.lga ?? "-"],
                 ["Engineering field", detail.profile.engineering_field ?? "-"],
                 ["Qualification", detail.profile.qualification ?? "-"],
+                ["Years of experience", detail.profile.years_experience ?? "-"],
                 ["Employment", EMPLOYMENT_LABELS[detail.profile.employment_status] ?? detail.profile.employment_status],
               ].map(([k, v]) => (
                 <div key={k as string} className="rounded-lg bg-secondary p-3">
@@ -326,6 +443,11 @@ function AdminDashboard() {
             <div className="mt-4 rounded-lg bg-secondary p-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase">Skills / notes</p>
               <p className="mt-1 text-sm whitespace-pre-wrap">{detail.profile.notes ?? "-"}</p>
+            </div>
+
+            <div className="mt-4 rounded-lg bg-secondary p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Experience</p>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{detail.profile.experience_notes ?? "-"}</p>
             </div>
 
             <div className="mt-4">
@@ -509,6 +631,165 @@ function AdminDashboard() {
                 ))
               )}
             </ul>
+          </section>
+        ) : view === "period" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <h1 className="text-2xl font-bold text-primary">Manage application period</h1>
+            <div className="rounded-lg bg-secondary p-4">
+              <p className="text-sm">
+                Applications are currently{" "}
+                <strong className={period.open ? "text-primary" : "text-destructive"}>
+                  {period.open ? "OPEN" : "CLOSED"}
+                </strong>
+                . Closing date:{" "}
+                <strong>{period.deadline ? new Date(period.deadline).toLocaleDateString() : "—"}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Closing date</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={deadlineInput}
+                onChange={(e) => setDeadlineInput(e.target.value)}
+              />
+              <Button
+                disabled={busy || !deadlineInput}
+                onClick={() => applyPeriod({ deadline: `${deadlineInput}T23:59:59+01:00` })}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Save / extend deadline
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 border-t pt-4">
+              <Button
+                disabled={busy || period.manuallyClosed}
+                variant="destructive"
+                onClick={() => applyPeriod({ manuallyClosed: true })}
+              >
+                Close applications now
+              </Button>
+              <Button
+                disabled={busy || !period.manuallyClosed}
+                onClick={() => applyPeriod({ manuallyClosed: false })}
+                className="bg-primary text-primary-foreground"
+              >
+                Reopen applications
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Closing applications only blocks new registrations and new submissions. Existing applicants and the admin
+              keep full access to the portal.
+            </p>
+          </section>
+        ) : view === "assistant" ? (
+          <section className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <aside className="rounded-xl border bg-card p-3 shadow-soft">
+              <Button
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={() => {
+                  setThreadId(null);
+                  setTurns([]);
+                }}
+              >
+                New chat
+              </Button>
+              <ul className="mt-3 space-y-1">
+                {threads.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => openThread(t.id)}
+                      className={`w-full truncate rounded-md px-2 py-2 text-left text-sm ${
+                        threadId === t.id ? "bg-secondary font-semibold text-primary" : "hover:bg-secondary"
+                      }`}
+                    >
+                      {t.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+            <div className="rounded-xl border bg-card p-5 shadow-soft">
+              <h1 className="text-2xl font-bold text-primary">Research Assistant</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ask general questions, or ask about portal data — applicant counts, decisions, fields and employment.
+              </p>
+              <div className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto rounded-lg bg-secondary p-3">
+                {turns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Start the conversation below.</p>
+                ) : (
+                  turns.map((t) => (
+                    <div
+                      key={t.id}
+                      className={`max-w-[90%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                        t.role === "assistant" ? "bg-card" : "ml-auto bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      {t.content}
+                    </div>
+                  ))
+                )}
+                {busy ? <p className="text-xs text-muted-foreground">Thinking...</p> : null}
+              </div>
+              <div className="mt-4 space-y-2">
+                <Textarea
+                  rows={3}
+                  value={assistantInput}
+                  onChange={(e) => setAssistantInput(e.target.value)}
+                  placeholder="Ask a question..."
+                />
+                <Button
+                  disabled={busy || !assistantInput.trim()}
+                  onClick={sendToAssistant}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  Ask
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : view === "settings" ? (
+          <section className="space-y-6">
+            <h1 className="text-2xl font-bold text-primary">Settings</h1>
+            <div className="rounded-xl border bg-card p-5 shadow-soft">
+              <h2 className="font-bold text-primary">Change password</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="anp">New password</Label>
+                  <Input id="anp" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="acp">Confirm new password</Label>
+                  <Input
+                    id="acp"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button disabled={busy} onClick={savePassword} className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
+                Update password
+              </Button>
+            </div>
+            <div className="rounded-xl border bg-card p-5 shadow-soft">
+              <h2 className="font-bold text-primary">Security question</h2>
+              <div className="mt-3 space-y-3">
+                <Select value={question} onValueChange={setQuestion}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SECURITY_QUESTIONS.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input placeholder="Your answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+              </div>
+              <Button disabled={busy} onClick={saveQuestion} className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
+                Save security question
+              </Button>
+            </div>
           </section>
         ) : view === "notifications" ? (
           <section className="space-y-6">
