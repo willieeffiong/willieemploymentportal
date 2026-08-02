@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           created_at: string
           deadline: string
+          deadline_change: string | null
+          deadline_changed_at: string | null
           id: number
           manually_closed: boolean
           updated_at: string
@@ -25,6 +27,8 @@ export type Database = {
         Insert: {
           created_at?: string
           deadline?: string
+          deadline_change?: string | null
+          deadline_changed_at?: string | null
           id?: number
           manually_closed?: boolean
           updated_at?: string
@@ -32,6 +36,8 @@ export type Database = {
         Update: {
           created_at?: string
           deadline?: string
+          deadline_change?: string | null
+          deadline_changed_at?: string | null
           id?: number
           manually_closed?: boolean
           updated_at?: string
@@ -40,6 +46,9 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_type: string | null
           content: string
           created_at: string
           id: string
@@ -48,6 +57,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_type?: string | null
           content: string
           created_at?: string
           id?: string
@@ -56,6 +68,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_type?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -214,6 +229,91 @@ export type Database = {
         }
         Relationships: []
       }
+      post_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_reactions: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          audience: string
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          media: Json
+        }
+        Insert: {
+          audience?: string
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          media?: Json
+        }
+        Update: {
+          audience?: string
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          media?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -298,6 +398,33 @@ export type Database = {
           terms_accepted?: boolean
           updated_at?: string
           years_experience?: string | null
+        }
+        Relationships: []
+      }
+      public_messages: {
+        Row: {
+          body: string
+          contact: string
+          created_at: string
+          gender: string
+          id: string
+          read_by_admin: boolean
+        }
+        Insert: {
+          body: string
+          contact: string
+          created_at?: string
+          gender: string
+          id?: string
+          read_by_admin?: boolean
+        }
+        Update: {
+          body?: string
+          contact?: string
+          created_at?: string
+          gender?: string
+          id?: string
+          read_by_admin?: boolean
         }
         Relationships: []
       }
