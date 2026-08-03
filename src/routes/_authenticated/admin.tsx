@@ -684,73 +684,96 @@ function AdminDashboard() {
               keep full access to the portal.
             </p>
           </section>
-        ) : view === "assistant" ? (
-          <section className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <aside className="rounded-xl border bg-card p-3 shadow-soft">
+        ) : view === "enquiries" ? (
+          <section className="rounded-xl border bg-card p-5 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl font-bold text-primary sm:text-2xl">Public enquiries</h1>
               <Button
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => {
-                  setThreadId(null);
-                  setTurns([]);
+                variant="outline"
+                className="border-primary text-primary"
+                onClick={async () => {
+                  await markEnquiries({});
+                  await loadEnquiries();
                 }}
               >
-                New chat
+                Mark all read
               </Button>
-              <ul className="mt-3 space-y-1">
-                {threads.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      onClick={() => openThread(t.id)}
-                      className={`w-full truncate rounded-md px-2 py-2 text-left text-sm ${
-                        threadId === t.id ? "bg-secondary font-semibold text-primary" : "hover:bg-secondary"
-                      }`}
-                    >
-                      {t.title}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </aside>
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h1 className="text-2xl font-bold text-primary">Research Assistant</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ask general questions, or ask about portal data — applicant counts, decisions, fields and employment.
-              </p>
-              <div className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto rounded-lg bg-secondary p-3">
-                {turns.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Start the conversation below.</p>
-                ) : (
-                  turns.map((t) => (
-                    <div
-                      key={t.id}
-                      className={`max-w-[90%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                        t.role === "assistant" ? "bg-card" : "ml-auto bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      {t.content}
-                    </div>
-                  ))
-                )}
-                {busy ? <p className="text-xs text-muted-foreground">Thinking...</p> : null}
-              </div>
-              <div className="mt-4 space-y-2">
-                <Textarea
-                  rows={3}
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  placeholder="Ask a question..."
-                />
-                <Button
-                  disabled={busy || !assistantInput.trim()}
-                  onClick={sendToAssistant}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  Ask
-                </Button>
-              </div>
             </div>
+            <ul className="mt-4 space-y-2">
+              {enquiries.length === 0 ? (
+                <li className="text-sm text-muted-foreground">No enquiries yet.</li>
+              ) : (
+                enquiries.map((e) => (
+                  <li
+                    key={e.id}
+                    className={`rounded-lg p-4 ${
+                      e.read_by_admin ? "border bg-secondary" : "border-l-4 border-accent bg-card shadow-soft"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap text-foreground">{e.body}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {e.gender} · contact: <span className="font-semibold text-primary">{e.contact}</span> ·{" "}
+                      {new Date(e.created_at).toLocaleString()}
+                    </p>
+                  </li>
+                ))
+              )}
+            </ul>
           </section>
+        ) : view === "compose" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <h1 className="text-2xl font-bold text-primary">Share your mind or post new updates</h1>
+            <Textarea
+              rows={7}
+              value={postBody}
+              onChange={(e) => setPostBody(e.target.value)}
+              placeholder="Write your update..."
+            />
+            <div className="space-y-2">
+              <Label htmlFor="post-media">Photos or videos (optional)</Label>
+              <Input
+                id="post-media"
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={(e) => setPostFiles(Array.from(e.target.files ?? []))}
+              />
+              {postFiles.length > 0 ? (
+                <p className="text-xs text-muted-foreground">{postFiles.length} file(s) selected</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label>Who can see this post?</Label>
+              <Select value={audience} onValueChange={setAudience}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All applicants / users</SelectItem>
+                  <SelectItem value="accepted">Accepted applicants</SelectItem>
+                  <SelectItem value="pending">Pending applicants</SelectItem>
+                  <SelectItem value="rejected">Rejected applicants</SelectItem>
+                  <SelectItem value="employed">Employed applicants</SelectItem>
+                  <SelectItem value="unemployed">Unemployed applicants</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {postFiles.length > 0 && !postBody.trim() ? (
+              <p className="text-sm font-semibold text-destructive">
+                Add some text before posting a photo or video.
+              </p>
+            ) : null}
+            <Button
+              disabled={busy || !postBody.trim()}
+              onClick={publishPost}
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              {busy ? "Posting…" : "Post update"}
+            </Button>
+          </section>
+        ) : view === "assistant" ? (
+          <AssistantChat />
+
         ) : view === "settings" ? (
           <section className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Settings</h1>
