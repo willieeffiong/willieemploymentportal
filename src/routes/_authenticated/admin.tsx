@@ -61,11 +61,14 @@ const MENU = [
   { key: "rejected", label: "Rejected" },
   { key: "pending", label: "Pending" },
   { key: "messages", label: "Feedback / Messages" },
+  { key: "enquiries", label: "Public Enquiries" },
+  { key: "compose", label: "Post an Update" },
   { key: "assistant", label: "Research Assistant" },
   { key: "period", label: "Manage Application Period" },
   { key: "notifications", label: "Notifications" },
   { key: "settings", label: "Settings" },
 ];
+
 
 type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
 type Detail = Awaited<ReturnType<typeof getApplicant>>;
