@@ -579,10 +579,23 @@ function AdminDashboard() {
           </section>
         ) : view === "home" ? (
           <div className="space-y-6">
+            <AssistantBanner onOpen={() => setView("assistant")} />
+
+            <button
+              type="button"
+              onClick={() => setView("compose")}
+              className="w-full rounded-xl border-2 border-dashed border-accent bg-card p-4 text-left text-sm font-semibold text-primary shadow-soft hover:bg-secondary"
+            >
+              Share your mind or post new updates
+            </button>
+
             <section className="rounded-xl bg-hero p-6 text-primary-foreground shadow-soft">
               <h1 className="text-2xl font-bold sm:text-3xl">Admin dashboard</h1>
               <p className="mt-1 text-sm opacity-90">Review submitted applications and respond to applicants.</p>
             </section>
+
+            <UpdatesFeed isAdmin />
+
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {boxes.map((box) => (
