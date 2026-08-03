@@ -217,29 +217,32 @@ function AdminDashboard() {
     }
   }
 
-  async function sendToAssistant() {
-    const text = assistantInput.trim();
-    if (!text) return;
-    setAssistantInput("");
-    setTurns((prev) => [...prev, { id: `local-${Date.now()}`, role: "user", content: text }]);
+  async function publishPost() {
+    const body = postBody.trim();
+    if (!body) return toast.error("Add some text before posting.");
     setBusy(true);
     try {
-      const result = await ask({ data: { threadId, message: text } });
-      setThreadId(result.threadId);
-      setTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: result.reply }]);
-      void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
+      const media: { path: string; type: string; name: string }[] = [];
+      for (const item of postFiles) {
+        const path = `posts/${Date.now()}-${item.name.replace(/[^\w.\-]+/g, "_")}`;
+        const { error } = await supabase.storage.from("posts").upload(path, item);
+        if (error) throw new Error(error.message);
+        media.push({ path, name: item.name, type: item.type || "application/octet-stream" });
+      }
+      await addPost({
+        data: { body, audience: audience as "all", media },
+      });
+      setPostBody("");
+      setPostFiles([]);
+      toast.success("Update posted.");
+      setView("home");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The assistant could not answer.");
+      toast.error(error instanceof Error ? error.message : "Could not publish the post.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function openThread(id: string) {
-    setThreadId(id);
-    const rows = await loadThreadMessages({ data: { threadId: id } });
-    setTurns(rows as { id: string; role: string; content: string }[]);
-  }
 
   const unreadNotes = notes.filter((n) => !n.read).length;
   const bellCount = unreadNotes + inboxUnread;
