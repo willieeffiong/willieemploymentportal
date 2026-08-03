@@ -267,10 +267,8 @@ function Dashboard() {
     void loadPeriod().then((p) => setApplicationsOpen(p.open));
   }, [load, loadPeriod]);
 
-  useEffect(() => {
-    if (view !== "assistant") return;
-    void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
-  }, [view, listThreads]);
+
+
 
   const unread = useMemo(() => notes.filter((n) => !n.read).length, [notes]);
   const submitted = Boolean(profile?.submitted_at);
