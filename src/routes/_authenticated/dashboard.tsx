@@ -900,13 +900,18 @@ function Dashboard() {
               <div className="min-w-0">
                 <p className="truncate font-semibold text-primary">{profile?.full_name}</p>
                 <p className="truncate text-sm text-muted-foreground">{profile?.email}</p>
+                <Label htmlFor="avatar" className="mt-2 block text-xs font-semibold text-primary">
+                  {avatarSrc ? "Click to change or edit your profile picture" : "Upload your profile picture"}
+                </Label>
                 <Input
+                  id="avatar"
                   type="file"
                   accept="image/*"
-                  className="mt-2 max-w-xs"
+                  className="mt-1 max-w-xs"
                   onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])}
                 />
               </div>
+
             </div>
             <div className="mt-6">{applicationForm}</div>
           </section>
