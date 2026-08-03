@@ -4,13 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  adminMarkEnquiriesRead,
   adminMarkMessagesRead,
   adminMessageInbox,
+  adminPublicEnquiries,
   adminReplyToApplicant,
-  assistantAsk,
-  assistantThreadMessages,
-  assistantThreads,
   bulkReviewApplicants,
+  createUpdatePost,
   fetchApplicationPeriod,
   getApplicant,
   listApplicants,
@@ -21,7 +21,10 @@ import {
   updateSecurityQuestion,
 } from "@/lib/portal.functions";
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
+import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
+import { UpdatesFeed } from "@/components/UpdatesFeed";
 import { EMPLOYMENT_LABELS, SECURITY_QUESTIONS } from "@/lib/portal-data";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
