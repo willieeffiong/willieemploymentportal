@@ -174,10 +174,11 @@ function AdminDashboard() {
   }, [loadPeriod]);
 
   const loadEnquiries = useCallback(async () => {
-    const result = await fetchEnquiries();
-    setEnquiries(result.messages as typeof enquiries);
-    setEnquiryUnread(result.unread);
+    const rows = (await fetchEnquiries()) as typeof enquiries;
+    setEnquiries(rows);
+    setEnquiryUnread(rows.filter((row) => !row.read_by_admin).length);
   }, [fetchEnquiries]);
+
 
   useEffect(() => {
     void loadEnquiries();
