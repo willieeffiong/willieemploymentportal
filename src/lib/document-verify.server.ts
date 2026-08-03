@@ -25,11 +25,8 @@ export async function verifyDocument(userId: string, documentId: string) {
     .maybeSingle();
   if (!doc) throw new Error("Document not found.");
 
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("qualification, engineering_field, full_name")
-    .eq("id", userId)
-    .maybeSingle();
+  void userId;
+
 
   const { data: file, error: downloadError } = await supabaseAdmin.storage
     .from("documents")
