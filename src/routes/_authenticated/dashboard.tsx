@@ -12,12 +12,12 @@ import {
   updatePassword,
   updateSecurityQuestion,
   fetchApplicationPeriod,
-  assistantAsk,
-  assistantThreads,
-  assistantThreadMessages,
 } from "@/lib/portal.functions";
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
+import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
+import { UpdatesFeed } from "@/components/UpdatesFeed";
 import { DeadlineCountdown } from "@/components/DeadlineCountdown";
+
 import {
   ENGINEERING_FIELDS,
   ENGINEERING_FIELD_NAMES,
@@ -162,9 +162,8 @@ function Dashboard() {
   const changePwd = useServerFn(updatePassword);
   const changeQuestion = useServerFn(updateSecurityQuestion);
   const loadPeriod = useServerFn(fetchApplicationPeriod);
-  const ask = useServerFn(assistantAsk);
-  const listThreads = useServerFn(assistantThreads);
-  const loadThread = useServerFn(assistantThreadMessages);
+
+
 
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -189,11 +188,8 @@ function Dashboard() {
   const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
   const [answer, setAnswer] = useState("");
 
-  // Assistant
-  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [assistantInput, setAssistantInput] = useState("");
+
+
 
   const [form, setForm] = useState({
     full_name: "",
@@ -268,10 +264,8 @@ function Dashboard() {
     void loadPeriod().then((p) => setApplicationsOpen(p.open));
   }, [load, loadPeriod]);
 
-  useEffect(() => {
-    if (view !== "assistant") return;
-    void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
-  }, [view, listThreads]);
+
+
 
   const unread = useMemo(() => notes.filter((n) => !n.read).length, [notes]);
   const submitted = Boolean(profile?.submitted_at);
@@ -479,29 +473,8 @@ function Dashboard() {
     }
   }
 
-  async function sendToAssistant() {
-    const text = assistantInput.trim();
-    if (!text) return;
-    setAssistantInput("");
-    setTurns((prev) => [...prev, { id: `local-${Date.now()}`, role: "user", content: text }]);
-    setBusy(true);
-    try {
-      const result = await ask({ data: { threadId, message: text } });
-      setThreadId(result.threadId);
-      setTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: result.reply }]);
-      void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The assistant could not answer.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
-  async function openThread(id: string) {
-    setThreadId(id);
-    const rows = await loadThread({ data: { threadId: id } });
-    setTurns(rows as ChatTurn[]);
-  }
+
 
   function downloadPdf() {
     if (!profile) return;
@@ -847,7 +820,12 @@ function Dashboard() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         {view === "home" ? (
           <div className="space-y-8">
+            <AssistantBanner onOpen={() => setView("assistant")} />
+
+            <UpdatesFeed />
+
             <section className="rounded-xl bg-hero p-6 text-primary-foreground shadow-soft">
+
               <h1 className="text-2xl font-bold sm:text-3xl">Welcome to Willie Lab Tech Employment Portal</h1>
               <p className="mt-2 text-sm opacity-90">
                 Hello {profile?.full_name || "applicant"} — this empowerment connects young Nigerian engineers with
@@ -927,13 +905,18 @@ function Dashboard() {
               <div className="min-w-0">
                 <p className="truncate font-semibold text-primary">{profile?.full_name}</p>
                 <p className="truncate text-sm text-muted-foreground">{profile?.email}</p>
+                <Label htmlFor="avatar" className="mt-2 block text-xs font-semibold text-primary">
+                  {avatarSrc ? "Click to change or edit your profile picture" : "Upload your profile picture"}
+                </Label>
                 <Input
+                  id="avatar"
                   type="file"
                   accept="image/*"
-                  className="mt-2 max-w-xs"
+                  className="mt-1 max-w-xs"
                   onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])}
                 />
               </div>
+
             </div>
             <div className="mt-6">{applicationForm}</div>
           </section>
@@ -1049,76 +1032,8 @@ function Dashboard() {
           </section>
         ) : null}
 
-        {view === "assistant" ? (
-          <section className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <aside className="rounded-xl border bg-card p-3 shadow-soft">
-              <Button
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => {
-                  setThreadId(null);
-                  setTurns([]);
-                }}
-              >
-                New chat
-              </Button>
-              <ul className="mt-3 space-y-1">
-                {threads.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      onClick={() => openThread(t.id)}
-                      className={`w-full truncate rounded-md px-2 py-2 text-left text-sm ${
-                        threadId === t.id ? "bg-secondary font-semibold text-primary" : "hover:bg-secondary"
-                      }`}
-                    >
-                      {t.title}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </aside>
+        {view === "assistant" ? <AssistantChat /> : null}
 
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h1 className="text-2xl font-bold text-primary">Research Assistant</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ask anything — general knowledge, engineering study help, or questions about this empowerment
-                programme.
-              </p>
-              <div className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto rounded-lg bg-secondary p-3">
-                {turns.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Start the conversation below.</p>
-                ) : (
-                  turns.map((t) => (
-                    <div
-                      key={t.id}
-                      className={`max-w-[90%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                        t.role === "assistant" ? "bg-card" : "ml-auto bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      {t.content}
-                    </div>
-                  ))
-                )}
-                {busy ? <p className="text-xs text-muted-foreground">Thinking...</p> : null}
-              </div>
-              <div className="mt-4 space-y-2">
-                <Textarea
-                  rows={3}
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  placeholder="Ask a question..."
-                />
-                <Button
-                  disabled={busy || !assistantInput.trim()}
-                  onClick={sendToAssistant}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  Ask
-                </Button>
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         {view === "settings" ? (
           <section className="space-y-6">

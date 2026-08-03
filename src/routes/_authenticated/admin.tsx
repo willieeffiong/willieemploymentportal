@@ -4,13 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  adminMarkEnquiriesRead,
   adminMarkMessagesRead,
   adminMessageInbox,
+  adminPublicEnquiries,
   adminReplyToApplicant,
-  assistantAsk,
-  assistantThreadMessages,
-  assistantThreads,
   bulkReviewApplicants,
+  createUpdatePost,
   fetchApplicationPeriod,
   getApplicant,
   listApplicants,
@@ -21,7 +21,10 @@ import {
   updateSecurityQuestion,
 } from "@/lib/portal.functions";
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
+import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
+import { UpdatesFeed } from "@/components/UpdatesFeed";
 import { EMPLOYMENT_LABELS, SECURITY_QUESTIONS } from "@/lib/portal-data";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,11 +61,14 @@ const MENU = [
   { key: "rejected", label: "Rejected" },
   { key: "pending", label: "Pending" },
   { key: "messages", label: "Feedback / Messages" },
+  { key: "enquiries", label: "Public Enquiries" },
+  { key: "compose", label: "Post an Update" },
   { key: "assistant", label: "Research Assistant" },
   { key: "period", label: "Manage Application Period" },
   { key: "notifications", label: "Notifications" },
   { key: "settings", label: "Settings" },
 ];
+
 
 type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
 type Detail = Awaited<ReturnType<typeof getApplicant>>;
@@ -90,9 +96,10 @@ function AdminDashboard() {
   const savePeriod = useServerFn(saveApplicationPeriod);
   const changePwd = useServerFn(updatePassword);
   const changeQuestion = useServerFn(updateSecurityQuestion);
-  const ask = useServerFn(assistantAsk);
-  const listThreads = useServerFn(assistantThreads);
-  const loadThreadMessages = useServerFn(assistantThreadMessages);
+  const addPost = useServerFn(createUpdatePost);
+  const fetchEnquiries = useServerFn(adminPublicEnquiries);
+  const markEnquiries = useServerFn(adminMarkEnquiriesRead);
+
 
   const routeSearch = Route.useSearch();
   const view = routeSearch.v ?? "home";
@@ -123,10 +130,14 @@ function AdminDashboard() {
   const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
   const [answer, setAnswer] = useState("");
 
-  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [turns, setTurns] = useState<{ id: string; role: string; content: string }[]>([]);
-  const [assistantInput, setAssistantInput] = useState("");
+  const [enquiries, setEnquiries] = useState<
+    { id: string; body: string; gender: string; contact: string; read_by_admin: boolean; created_at: string }[]
+  >([]);
+  const [enquiryUnread, setEnquiryUnread] = useState(0);
+  const [postBody, setPostBody] = useState("");
+  const [postFiles, setPostFiles] = useState<File[]>([]);
+  const [audience, setAudience] = useState("all");
+
 
   function setView(key: string) {
     setDetail(null);
@@ -165,10 +176,17 @@ function AdminDashboard() {
     });
   }, [loadPeriod]);
 
+  const loadEnquiries = useCallback(async () => {
+    const rows = (await fetchEnquiries()) as typeof enquiries;
+    setEnquiries(rows);
+    setEnquiryUnread(rows.filter((row) => !row.read_by_admin).length);
+  }, [fetchEnquiries]);
+
+
   useEffect(() => {
-    if (view !== "assistant") return;
-    void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
-  }, [view, listThreads]);
+    void loadEnquiries();
+  }, [loadEnquiries]);
+
 
   async function applyPeriod(patch: { deadline?: string; manuallyClosed?: boolean }) {
     setBusy(true);
@@ -214,32 +232,35 @@ function AdminDashboard() {
     }
   }
 
-  async function sendToAssistant() {
-    const text = assistantInput.trim();
-    if (!text) return;
-    setAssistantInput("");
-    setTurns((prev) => [...prev, { id: `local-${Date.now()}`, role: "user", content: text }]);
+  async function publishPost() {
+    const body = postBody.trim();
+    if (!body) return toast.error("Add some text before posting.");
     setBusy(true);
     try {
-      const result = await ask({ data: { threadId, message: text } });
-      setThreadId(result.threadId);
-      setTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: result.reply }]);
-      void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
+      const media: { path: string; type: string; name: string }[] = [];
+      for (const item of postFiles) {
+        const path = `posts/${Date.now()}-${item.name.replace(/[^\w.\-]+/g, "_")}`;
+        const { error } = await supabase.storage.from("posts").upload(path, item);
+        if (error) throw new Error(error.message);
+        media.push({ path, name: item.name, type: item.type || "application/octet-stream" });
+      }
+      await addPost({
+        data: { body, audience: audience as "all", media },
+      });
+      setPostBody("");
+      setPostFiles([]);
+      toast.success("Update posted.");
+      setView("home");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The assistant could not answer.");
+      toast.error(error instanceof Error ? error.message : "Could not publish the post.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function openThread(id: string) {
-    setThreadId(id);
-    const rows = await loadThreadMessages({ data: { threadId: id } });
-    setTurns(rows as { id: string; role: string; content: string }[]);
-  }
 
   const unreadNotes = notes.filter((n) => !n.read).length;
-  const bellCount = unreadNotes + inboxUnread;
+  const bellCount = unreadNotes + inboxUnread + enquiryUnread;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -558,10 +579,23 @@ function AdminDashboard() {
           </section>
         ) : view === "home" ? (
           <div className="space-y-6">
+            <AssistantBanner onOpen={() => setView("assistant")} />
+
+            <button
+              type="button"
+              onClick={() => setView("compose")}
+              className="w-full rounded-xl border-2 border-dashed border-accent bg-card p-4 text-left text-sm font-semibold text-primary shadow-soft hover:bg-secondary"
+            >
+              Share your mind or post new updates
+            </button>
+
             <section className="rounded-xl bg-hero p-6 text-primary-foreground shadow-soft">
               <h1 className="text-2xl font-bold sm:text-3xl">Admin dashboard</h1>
               <p className="mt-1 text-sm opacity-90">Review submitted applications and respond to applicants.</p>
             </section>
+
+            <UpdatesFeed isAdmin />
+
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {boxes.map((box) => (
@@ -663,94 +697,115 @@ function AdminDashboard() {
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-t pt-4">
+            <div className="border-t pt-4">
               <Button
-                disabled={busy || period.manuallyClosed}
-                variant="destructive"
-                onClick={() => applyPeriod({ manuallyClosed: true })}
+                disabled={busy}
+                onClick={() => applyPeriod({ manuallyClosed: !period.manuallyClosed })}
+                className={
+                  period.manuallyClosed
+                    ? "w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                }
               >
-                Close applications now
-              </Button>
-              <Button
-                disabled={busy || !period.manuallyClosed}
-                onClick={() => applyPeriod({ manuallyClosed: false })}
-                className="bg-primary text-primary-foreground"
-              >
-                Reopen applications
+                {period.manuallyClosed ? "Applications Closed — tap to reopen" : "Applications Open — tap to close"}
               </Button>
             </div>
+
             <p className="text-xs text-muted-foreground">
               Closing applications only blocks new registrations and new submissions. Existing applicants and the admin
               keep full access to the portal.
             </p>
           </section>
-        ) : view === "assistant" ? (
-          <section className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <aside className="rounded-xl border bg-card p-3 shadow-soft">
+        ) : view === "enquiries" ? (
+          <section className="rounded-xl border bg-card p-5 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl font-bold text-primary sm:text-2xl">Public enquiries</h1>
               <Button
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => {
-                  setThreadId(null);
-                  setTurns([]);
+                variant="outline"
+                className="border-primary text-primary"
+                onClick={async () => {
+                  await markEnquiries({});
+                  await loadEnquiries();
                 }}
               >
-                New chat
+                Mark all read
               </Button>
-              <ul className="mt-3 space-y-1">
-                {threads.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      onClick={() => openThread(t.id)}
-                      className={`w-full truncate rounded-md px-2 py-2 text-left text-sm ${
-                        threadId === t.id ? "bg-secondary font-semibold text-primary" : "hover:bg-secondary"
-                      }`}
-                    >
-                      {t.title}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </aside>
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h1 className="text-2xl font-bold text-primary">Research Assistant</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ask general questions, or ask about portal data — applicant counts, decisions, fields and employment.
-              </p>
-              <div className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto rounded-lg bg-secondary p-3">
-                {turns.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Start the conversation below.</p>
-                ) : (
-                  turns.map((t) => (
-                    <div
-                      key={t.id}
-                      className={`max-w-[90%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                        t.role === "assistant" ? "bg-card" : "ml-auto bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      {t.content}
-                    </div>
-                  ))
-                )}
-                {busy ? <p className="text-xs text-muted-foreground">Thinking...</p> : null}
-              </div>
-              <div className="mt-4 space-y-2">
-                <Textarea
-                  rows={3}
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  placeholder="Ask a question..."
-                />
-                <Button
-                  disabled={busy || !assistantInput.trim()}
-                  onClick={sendToAssistant}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  Ask
-                </Button>
-              </div>
             </div>
+            <ul className="mt-4 space-y-2">
+              {enquiries.length === 0 ? (
+                <li className="text-sm text-muted-foreground">No enquiries yet.</li>
+              ) : (
+                enquiries.map((e) => (
+                  <li
+                    key={e.id}
+                    className={`rounded-lg p-4 ${
+                      e.read_by_admin ? "border bg-secondary" : "border-l-4 border-accent bg-card shadow-soft"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap text-foreground">{e.body}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {e.gender} · contact: <span className="font-semibold text-primary">{e.contact}</span> ·{" "}
+                      {new Date(e.created_at).toLocaleString()}
+                    </p>
+                  </li>
+                ))
+              )}
+            </ul>
           </section>
+        ) : view === "compose" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <h1 className="text-2xl font-bold text-primary">Share your mind or post new updates</h1>
+            <Textarea
+              rows={7}
+              value={postBody}
+              onChange={(e) => setPostBody(e.target.value)}
+              placeholder="Write your update..."
+            />
+            <div className="space-y-2">
+              <Label htmlFor="post-media">Photos or videos (optional)</Label>
+              <Input
+                id="post-media"
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={(e) => setPostFiles(Array.from(e.target.files ?? []))}
+              />
+              {postFiles.length > 0 ? (
+                <p className="text-xs text-muted-foreground">{postFiles.length} file(s) selected</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label>Who can see this post?</Label>
+              <Select value={audience} onValueChange={setAudience}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All applicants / users</SelectItem>
+                  <SelectItem value="accepted">Accepted applicants</SelectItem>
+                  <SelectItem value="pending">Pending applicants</SelectItem>
+                  <SelectItem value="rejected">Rejected applicants</SelectItem>
+                  <SelectItem value="employed">Employed applicants</SelectItem>
+                  <SelectItem value="unemployed">Unemployed applicants</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {postFiles.length > 0 && !postBody.trim() ? (
+              <p className="text-sm font-semibold text-destructive">
+                Add some text before posting a photo or video.
+              </p>
+            ) : null}
+            <Button
+              disabled={busy || !postBody.trim()}
+              onClick={publishPost}
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              {busy ? "Posting…" : "Post update"}
+            </Button>
+          </section>
+        ) : view === "assistant" ? (
+          <AssistantChat />
+
         ) : view === "settings" ? (
           <section className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Settings</h1>
