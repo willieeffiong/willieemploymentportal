@@ -478,29 +478,8 @@ function Dashboard() {
     }
   }
 
-  async function sendToAssistant() {
-    const text = assistantInput.trim();
-    if (!text) return;
-    setAssistantInput("");
-    setTurns((prev) => [...prev, { id: `local-${Date.now()}`, role: "user", content: text }]);
-    setBusy(true);
-    try {
-      const result = await ask({ data: { threadId, message: text } });
-      setThreadId(result.threadId);
-      setTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: result.reply }]);
-      void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The assistant could not answer.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
-  async function openThread(id: string) {
-    setThreadId(id);
-    const rows = await loadThread({ data: { threadId: id } });
-    setTurns(rows as ChatTurn[]);
-  }
+
 
   function downloadPdf() {
     if (!profile) return;
