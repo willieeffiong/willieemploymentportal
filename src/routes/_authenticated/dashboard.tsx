@@ -163,7 +163,7 @@ function Dashboard() {
   const changeQuestion = useServerFn(updateSecurityQuestion);
   const loadPeriod = useServerFn(fetchApplicationPeriod);
 
-  const loadThread = useServerFn(assistantThreadMessages);
+
 
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
