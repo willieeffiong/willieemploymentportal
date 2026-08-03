@@ -173,10 +173,16 @@ function AdminDashboard() {
     });
   }, [loadPeriod]);
 
+  const loadEnquiries = useCallback(async () => {
+    const result = await fetchEnquiries();
+    setEnquiries(result.messages as typeof enquiries);
+    setEnquiryUnread(result.unread);
+  }, [fetchEnquiries]);
+
   useEffect(() => {
-    if (view !== "assistant") return;
-    void listThreads().then((t) => setThreads(t as { id: string; title: string }[]));
-  }, [view, listThreads]);
+    void loadEnquiries();
+  }, [loadEnquiries]);
+
 
   async function applyPeriod(patch: { deadline?: string; manuallyClosed?: boolean }) {
     setBusy(true);
