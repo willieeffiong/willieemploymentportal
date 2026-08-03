@@ -697,22 +697,20 @@ function AdminDashboard() {
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-t pt-4">
+            <div className="border-t pt-4">
               <Button
-                disabled={busy || period.manuallyClosed}
-                variant="destructive"
-                onClick={() => applyPeriod({ manuallyClosed: true })}
+                disabled={busy}
+                onClick={() => applyPeriod({ manuallyClosed: !period.manuallyClosed })}
+                className={
+                  period.manuallyClosed
+                    ? "w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                }
               >
-                Close applications now
-              </Button>
-              <Button
-                disabled={busy || !period.manuallyClosed}
-                onClick={() => applyPeriod({ manuallyClosed: false })}
-                className="bg-primary text-primary-foreground"
-              >
-                Reopen applications
+                {period.manuallyClosed ? "Applications Closed — tap to reopen" : "Applications Open — tap to close"}
               </Button>
             </div>
+
             <p className="text-xs text-muted-foreground">
               Closing applications only blocks new registrations and new submissions. Existing applicants and the admin
               keep full access to the portal.
