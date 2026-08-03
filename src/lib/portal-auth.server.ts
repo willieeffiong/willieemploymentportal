@@ -116,12 +116,14 @@ export interface ApplicationPeriod {
   deadline: string;
   manuallyClosed: boolean;
   open: boolean;
+  change: string | null;
+  changedAt: string | null;
 }
 
 export async function getApplicationPeriod(): Promise<ApplicationPeriod> {
   const { data } = await supabaseAdmin
     .from("app_settings")
-    .select("deadline, manually_closed")
+    .select("deadline, manually_closed, deadline_change, deadline_changed_at")
     .eq("id", 1)
     .maybeSingle();
 
@@ -131,24 +133,61 @@ export async function getApplicationPeriod(): Promise<ApplicationPeriod> {
     deadline,
     manuallyClosed,
     open: !manuallyClosed && new Date(deadline).getTime() > Date.now(),
+    change: data?.deadline_change ?? null,
+    changedAt: data?.deadline_changed_at ?? null,
   };
 }
 
 export async function assertApplicationsOpen() {
   const period = await getApplicationPeriod();
   if (!period.open) {
-    throw new Error("Applications are closed. The application period has ended.");
+    throw new Error("Applications are now closed — please try again later.");
   }
   return period;
 }
 
+function formatDeadline(value: string) {
+  return new Date(value).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export async function setApplicationPeriod(input: { deadline?: string; manuallyClosed?: boolean }) {
-  const patch: { deadline?: string; manually_closed?: boolean } = {};
-  if (input.deadline) patch.deadline = input.deadline;
-  if (typeof input.manuallyClosed === "boolean") patch.manually_closed = input.manuallyClosed;
-  if (Object.keys(patch).length === 0) return getApplicationPeriod();
+  const current = await getApplicationPeriod();
+  const patch: {
+    deadline?: string;
+    manually_closed?: boolean;
+    deadline_change?: string | null;
+    deadline_changed_at?: string | null;
+  } = {};
+
+  if (input.deadline && new Date(input.deadline).getTime() !== new Date(current.deadline).getTime()) {
+    const extended = new Date(input.deadline).getTime() > new Date(current.deadline).getTime();
+    patch.deadline = input.deadline;
+    patch.deadline_change = `Application deadline ${extended ? "extended" : "reduced"} to ${formatDeadline(
+      input.deadline,
+    )}`;
+    patch.deadline_changed_at = new Date().toISOString();
+  }
+
+  if (typeof input.manuallyClosed === "boolean" && input.manuallyClosed !== current.manuallyClosed) {
+    patch.manually_closed = input.manuallyClosed;
+    if (!patch.deadline_change) {
+      patch.deadline_change = input.manuallyClosed
+        ? "Applications are now closed — please try again later."
+        : `Applications are open again until ${formatDeadline(input.deadline ?? current.deadline)}`;
+      patch.deadline_changed_at = new Date().toISOString();
+    }
+  }
+
+  if (Object.keys(patch).length === 0) return current;
 
   const { error } = await supabaseAdmin.from("app_settings").update(patch).eq("id", 1);
   if (error) throw new Error(error.message);
   return getApplicationPeriod();
 }
+
