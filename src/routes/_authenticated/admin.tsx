@@ -127,10 +127,14 @@ function AdminDashboard() {
   const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
   const [answer, setAnswer] = useState("");
 
-  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [turns, setTurns] = useState<{ id: string; role: string; content: string }[]>([]);
-  const [assistantInput, setAssistantInput] = useState("");
+  const [enquiries, setEnquiries] = useState<
+    { id: string; body: string; gender: string; contact: string; read_by_admin: boolean; created_at: string }[]
+  >([]);
+  const [enquiryUnread, setEnquiryUnread] = useState(0);
+  const [postBody, setPostBody] = useState("");
+  const [postFiles, setPostFiles] = useState<File[]>([]);
+  const [audience, setAudience] = useState("all");
+
 
   function setView(key: string) {
     setDetail(null);
