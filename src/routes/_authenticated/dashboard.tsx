@@ -12,12 +12,12 @@ import {
   updatePassword,
   updateSecurityQuestion,
   fetchApplicationPeriod,
-  assistantAsk,
-  assistantThreads,
-  assistantThreadMessages,
 } from "@/lib/portal.functions";
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
+import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
+import { UpdatesFeed } from "@/components/UpdatesFeed";
 import { DeadlineCountdown } from "@/components/DeadlineCountdown";
+
 import {
   ENGINEERING_FIELDS,
   ENGINEERING_FIELD_NAMES,
