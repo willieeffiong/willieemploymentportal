@@ -51,17 +51,17 @@ export async function verifyDocument(userId: string, documentId: string) {
 
   const base64 = bytesToBase64(new Uint8Array(await file.arrayBuffer()));
 
-  const instruction = `You are verifying a document uploaded to an engineering empowerment portal.
-Applicant name: ${profile?.full_name ?? "unknown"}
-Stated qualification: ${profile?.qualification ?? "not provided"}
-Stated engineering field: ${profile?.engineering_field ?? "not provided"}
+  const instruction = `You are checking whether a document uploaded to an engineering empowerment portal is legible.
 Document category: ${doc.category === "skill" ? "optional skills evidence" : "required qualification document"}
 
-Decide whether this document is (a) clear and readable, and (b) a plausible identity, certificate, CV or skills document for this applicant. For a qualification document it should relate to the stated qualification or field.
+Judge ONLY clarity and readability. Do not judge whether the content matches any qualification, field or person — any subject matter is acceptable.
+ACCEPT if a human could read the text or clearly see the content (even if it is not a certificate).
+REJECT only if it is blurry, too dark, cropped beyond reading, blank or otherwise unreadable.
 Reply with one line only, in this exact format:
 ACCEPT: <short reason>
 or
-REJECT: <short reason explaining what is wrong, e.g. blurry, unreadable, wrong document type>`;
+REJECT: Your document is not clear, please kindly upload a new one`;
+
 
   let reply = "";
   try {
