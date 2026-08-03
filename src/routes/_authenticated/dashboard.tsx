@@ -188,11 +188,8 @@ function Dashboard() {
   const [question, setQuestion] = useState(SECURITY_QUESTIONS[0]);
   const [answer, setAnswer] = useState("");
 
-  // Assistant
-  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [assistantInput, setAssistantInput] = useState("");
+
+
 
   const [form, setForm] = useState({
     full_name: "",
