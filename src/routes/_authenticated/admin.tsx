@@ -260,7 +260,7 @@ function AdminDashboard() {
 
 
   const unreadNotes = notes.filter((n) => !n.read).length;
-  const bellCount = unreadNotes + inboxUnread;
+  const bellCount = unreadNotes + inboxUnread + enquiryUnread;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
