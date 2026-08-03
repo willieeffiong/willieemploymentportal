@@ -29,8 +29,11 @@ export async function submitPublicMessage(input: { body: string; gender: string;
   await sendMail({
     to: ADMIN_EMAIL,
     subject: "New enquiry from the Willie Lab Tech portal",
-    html: `<p>A new enquiry was sent through the Contact Us page. Please log in to the admin portal to read it.</p>`,
+    title: "New enquiry received",
+    bodyHtml: `<p>A new enquiry was sent through the Contact Us page. Please log in to the admin portal to read it.</p>`,
+    text: "A new enquiry was sent through the Contact Us page. Please log in to the admin portal to read it.",
   }).catch(() => undefined);
+
 
   return { ok: true };
 }
