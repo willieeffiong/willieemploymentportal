@@ -250,6 +250,15 @@ export const assistantDeleteThread = createServerFn({ method: "POST" })
     return deleteThread(context.userId, data.threadId);
   });
 
+const attachmentSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    type: z.string().trim().min(3).max(100),
+    path: z.string().trim().min(3).max(400),
+  })
+  .nullable()
+  .optional();
+
 export const assistantAsk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
@@ -257,6 +266,7 @@ export const assistantAsk = createServerFn({ method: "POST" })
       .object({
         threadId: z.string().uuid().nullable().optional(),
         message: z.string().trim().min(1).max(4000),
+        attachment: attachmentSchema,
       })
       .parse(data),
   )
@@ -264,3 +274,120 @@ export const assistantAsk = createServerFn({ method: "POST" })
     const { askAssistant } = await import("./assistant.server");
     return askAssistant(context.userId, data);
   });
+
+export const assistantTranscribe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ audio: z.string().min(20), mimeType: z.string().min(3).max(80) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { transcribeAudio } = await import("./ai-gateway.server");
+    const binary = atob(data.audio);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const extension = data.mimeType.includes("wav") ? "wav" : data.mimeType.includes("mp4") ? "mp4" : "webm";
+    const text = await transcribeAudio(new Blob([bytes], { type: data.mimeType }), `recording.${extension}`);
+    return { text };
+  });
+
+export const assistantSpeak = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ text: z.string().trim().min(1).max(4000) }).parse(data))
+  .handler(async ({ data }) => {
+    const { speakText } = await import("./ai-gateway.server");
+    return { audio: await speakText(data.text) };
+  });
+
+/* ---------------- Updates feed ---------------- */
+
+const audienceSchema = z.enum(["all", "accepted", "pending", "rejected", "employed", "unemployed"]);
+
+export const createUpdatePost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        body: z.string().trim().min(1).max(20000),
+        audience: audienceSchema,
+        media: z
+          .array(
+            z.object({
+              path: z.string().min(3).max(400),
+              type: z.string().min(3).max(100),
+              name: z.string().min(1).max(200),
+            }),
+          )
+          .max(20)
+          .default([]),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { createPost } = await import("./posts.server");
+    return createPost(context.userId, data);
+  });
+
+export const deleteUpdatePost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { deletePost } = await import("./posts.server");
+    return deletePost(context.userId, data.postId);
+  });
+
+export const listUpdateFeed = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { listFeed } = await import("./posts.server");
+    return listFeed(context.userId);
+  });
+
+export const reactToPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { toggleReaction } = await import("./posts.server");
+    return toggleReaction(context.userId, data.postId);
+  });
+
+export const commentOnPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ postId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { addComment } = await import("./posts.server");
+    return addComment(context.userId, data.postId, data.body);
+  });
+
+/* ---------------- Public enquiries ---------------- */
+
+export const sendPublicEnquiry = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        body: z.string().trim().min(5).max(3000),
+        gender: z.enum(["Male", "Female", "Other"]),
+        contact: z.string().trim().min(5).max(200),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { submitPublicMessage } = await import("./public-inbox.server");
+    return submitPublicMessage(data);
+  });
+
+export const adminPublicEnquiries = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { listPublicMessages } = await import("./public-inbox.server");
+    return listPublicMessages(context.userId);
+  });
+
+export const adminMarkEnquiriesRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { markPublicMessagesRead } = await import("./public-inbox.server");
+    return markPublicMessagesRead(context.userId);
+  });
+
