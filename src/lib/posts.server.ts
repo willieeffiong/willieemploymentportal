@@ -70,7 +70,7 @@ export async function createPost(
       author_id: userId,
       body: input.body.trim(),
       audience: input.audience,
-      media: input.media,
+      media: input.media as unknown as Record<string, string>[],
     })
     .select("id")
     .single();
