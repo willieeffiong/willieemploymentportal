@@ -93,9 +93,10 @@ function AdminDashboard() {
   const savePeriod = useServerFn(saveApplicationPeriod);
   const changePwd = useServerFn(updatePassword);
   const changeQuestion = useServerFn(updateSecurityQuestion);
-  const ask = useServerFn(assistantAsk);
-  const listThreads = useServerFn(assistantThreads);
-  const loadThreadMessages = useServerFn(assistantThreadMessages);
+  const addPost = useServerFn(createUpdatePost);
+  const fetchEnquiries = useServerFn(adminPublicEnquiries);
+  const markEnquiries = useServerFn(adminMarkEnquiriesRead);
+
 
   const routeSearch = Route.useSearch();
   const view = routeSearch.v ?? "home";
