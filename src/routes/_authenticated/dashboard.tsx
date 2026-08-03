@@ -162,8 +162,7 @@ function Dashboard() {
   const changePwd = useServerFn(updatePassword);
   const changeQuestion = useServerFn(updateSecurityQuestion);
   const loadPeriod = useServerFn(fetchApplicationPeriod);
-  const ask = useServerFn(assistantAsk);
-  const listThreads = useServerFn(assistantThreads);
+
   const loadThread = useServerFn(assistantThreadMessages);
 
   const [userId, setUserId] = useState<string | null>(null);
