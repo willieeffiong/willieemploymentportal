@@ -820,7 +820,12 @@ function Dashboard() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         {view === "home" ? (
           <div className="space-y-8">
+            <AssistantBanner onOpen={() => setView("assistant")} />
+
+            <UpdatesFeed />
+
             <section className="rounded-xl bg-hero p-6 text-primary-foreground shadow-soft">
+
               <h1 className="text-2xl font-bold sm:text-3xl">Welcome to Willie Lab Tech Employment Portal</h1>
               <p className="mt-2 text-sm opacity-90">
                 Hello {profile?.full_name || "applicant"} — this empowerment connects young Nigerian engineers with
