@@ -30,12 +30,34 @@ function failure(status: number, body: string): Error {
   return new Error("The assistant could not answer right now.");
 }
 
-/** Calls the Lovable AI Gateway chat completions endpoint and returns the reply text. */
-export async function chatComplete(messages: ChatMessage[]): Promise<string> {
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+export interface ProviderOverride {
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+}
+
+function target(override?: ProviderOverride | null) {
+  if (override) {
+    return {
+      url: `${override.baseUrl}/chat/completions`,
+      key: override.apiKey,
+      body: { model: override.model } as Record<string, unknown>,
+    };
+  }
+  return {
+    url: `${BASE_URL}/chat/completions`,
+    key: apiKey(),
+    body: { model: CHAT_MODEL, reasoning_effort: "none" } as Record<string, unknown>,
+  };
+}
+
+/** Calls the chat completions endpoint and returns the reply text. */
+export async function chatComplete(messages: ChatMessage[], override?: ProviderOverride | null): Promise<string> {
+  const t = target(override);
+  const response = await fetch(t.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey()}` },
-    body: JSON.stringify({ model: CHAT_MODEL, reasoning_effort: "none", messages }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${t.key}` },
+    body: JSON.stringify({ ...t.body, messages }),
   });
 
   if (!response.ok) throw failure(response.status, await response.text());
@@ -45,16 +67,21 @@ export async function chatComplete(messages: ChatMessage[]): Promise<string> {
 }
 
 /** Opens a streaming chat completion. Returns the raw SSE body for the caller to parse. */
-export async function chatStream(messages: ChatMessage[]): Promise<ReadableStream<Uint8Array>> {
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+export async function chatStream(
+  messages: ChatMessage[],
+  override?: ProviderOverride | null,
+): Promise<ReadableStream<Uint8Array>> {
+  const t = target(override);
+  const response = await fetch(t.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey()}` },
-    body: JSON.stringify({ model: CHAT_MODEL, reasoning_effort: "none", stream: true, messages }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${t.key}` },
+    body: JSON.stringify({ ...t.body, stream: true, messages }),
   });
 
   if (!response.ok || !response.body) throw failure(response.status, await response.text().catch(() => ""));
   return response.body;
 }
+
 
 /** Transcribes a recorded audio clip and returns the text. */
 export async function transcribeAudio(audio: Blob, filename: string): Promise<string> {
