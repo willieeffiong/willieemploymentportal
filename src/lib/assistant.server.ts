@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { chatComplete, chatStream, type ChatContent, type ChatMessage } from "./ai-gateway.server";
 import { PROGRAMME_FACTS } from "./portal-data";
 
-export const ASSISTANT_NAME = "Willie Lab Tech AI";
+export const ASSISTANT_NAME = "WILLSVAYNE AI";
 
 export interface Attachment {
   name: string;
