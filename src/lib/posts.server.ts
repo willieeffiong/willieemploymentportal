@@ -17,6 +17,8 @@ export interface MediaItem {
   name: string;
 }
 
+export type AlbumKind = "images" | "videos" | "documents" | "text";
+
 export interface FeedPost {
   id: string;
   body: string;
@@ -26,7 +28,18 @@ export interface FeedPost {
   reactions: number;
   reacted: boolean;
   comments: { id: string; body: string; created_at: string; author: string }[];
+  album: AlbumKind;
+  seen: boolean;
 }
+
+/** Groups a post into an album by the kind of media it carries. */
+export function albumOf(media: { type: string }[]): AlbumKind {
+  if (media.some((m) => m.type.startsWith("video"))) return "videos";
+  if (media.some((m) => m.type.startsWith("image"))) return "images";
+  if (media.length > 0) return "documents";
+  return "text";
+}
+
 
 async function requireAdmin(userId: string) {
   const { data } = await supabaseAdmin
