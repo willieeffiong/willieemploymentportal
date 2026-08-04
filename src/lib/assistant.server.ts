@@ -178,8 +178,12 @@ export async function streamAssistant(
   userId: string,
   input: { threadId?: string | null; message: string; attachment?: Attachment | null },
 ) {
-  const { threadId, messages } = await prepareTurn(userId, input);
-  const body = await chatStream(messages);
+  const { activeExtraProvider } = await import("./ai-provider.server");
+  const [{ threadId, messages }, override] = await Promise.all([
+    prepareTurn(userId, input),
+    activeExtraProvider(),
+  ]);
+  const body = await chatStream(messages, override);
   return { threadId, body };
 }
 
@@ -188,8 +192,13 @@ export async function askAssistant(
   userId: string,
   input: { threadId?: string | null; message: string; attachment?: Attachment | null },
 ) {
-  const { threadId, messages } = await prepareTurn(userId, input);
-  const reply = (await chatComplete(messages)) || "I could not produce an answer. Please try again.";
+  const { activeExtraProvider } = await import("./ai-provider.server");
+  const [{ threadId, messages }, override] = await Promise.all([
+    prepareTurn(userId, input),
+    activeExtraProvider(),
+  ]);
+  const reply = (await chatComplete(messages, override)) || "I could not produce an answer. Please try again.";
   await saveAssistantReply(userId, threadId, reply);
   return { threadId, reply };
 }
+
