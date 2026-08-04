@@ -165,14 +165,16 @@ export async function listFeed(userId: string): Promise<FeedPost[]> {
   if (!visible.length) return [];
 
   const ids = visible.map((p) => p.id);
-  const [{ data: reactions }, { data: comments }] = await Promise.all([
+  const [{ data: reactions }, { data: comments }, { data: views }] = await Promise.all([
     supabaseAdmin.from("post_reactions").select("post_id, user_id").in("post_id", ids),
     supabaseAdmin
       .from("post_comments")
       .select("id, post_id, user_id, body, created_at")
       .in("post_id", ids)
       .order("created_at", { ascending: true }),
+    supabaseAdmin.from("post_views").select("post_id").eq("user_id", userId).in("post_id", ids),
   ]);
+  const seenIds = new Set((views ?? []).map((v) => v.post_id));
 
   const authorIds = [...new Set((comments ?? []).map((c) => c.user_id))];
   const { data: authors } = authorIds.length
@@ -181,8 +183,11 @@ export async function listFeed(userId: string): Promise<FeedPost[]> {
   const nameOf = (id: string) => authors?.find((a) => a.id === id)?.full_name || "Portal user";
 
   return Promise.all(
-    visible.map(async (post) => ({
-      id: post.id,
+    visible.map(async (post) => {
+      const media = await signMedia((post.media as MediaItem[] | null) ?? []);
+      return {
+        id: post.id,
+
       body: post.body,
       audience: post.audience,
       created_at: post.created_at,
