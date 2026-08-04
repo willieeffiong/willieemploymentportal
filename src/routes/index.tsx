@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import officeAsset from "@/assets/office.asset.json";
 import sponsorAsset from "@/assets/sponsor.asset.json";
 import { Button } from "@/components/ui/button";
 import { PortalFooter, PortalLogo } from "@/components/PortalChrome";
 import { DeadlineCountdown } from "@/components/DeadlineCountdown";
 import { ENGINEERING_FIELDS } from "@/lib/portal-data";
+import { fetchApplicationPeriod } from "@/lib/portal.functions";
+
 
 const title = "WILLIE LAB TECH — Engineering Empowerment Portal";
 const description =
