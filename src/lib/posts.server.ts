@@ -88,7 +88,39 @@ export async function createPost(
     .select("id")
     .single();
   if (error) throw new Error(error.message);
+
+  await notifyAudience(input.audience, data.id, albumOf(input.media), input.body.trim());
   return { id: data.id };
+}
+
+const ALBUM_LABEL: Record<AlbumKind, string> = {
+  images: "a new photo",
+  videos: "a new video",
+  documents: "a new document",
+  text: "a new update",
+};
+
+/** Sends a bell notification about a new post to everyone in its audience. */
+async function notifyAudience(audience: Audience, postId: string, album: AlbumKind, body: string) {
+  const { data: profiles } = await supabaseAdmin.from("profiles").select("id, status, employment_status");
+  const targets = (profiles ?? []).filter((p) => matchesAudience(audience, p));
+  if (!targets.length) return;
+
+  await supabaseAdmin.from("notifications").insert(
+    targets.map((p) => ({
+      user_id: p.id,
+      title: `New post: ${ALBUM_LABEL[album]}`,
+      message: body.length > 160 ? `${body.slice(0, 160)}…` : body,
+      post_id: postId,
+    })),
+  );
+}
+
+/** Marks a post as seen and clears the notification that pointed at it. */
+export async function markPostSeen(userId: string, postId: string) {
+  await supabaseAdmin.from("post_views").upsert({ post_id: postId, user_id: userId });
+  await supabaseAdmin.from("notifications").delete().eq("user_id", userId).eq("post_id", postId);
+  return { ok: true };
 }
 
 export async function deletePost(userId: string, postId: string) {
@@ -98,12 +130,15 @@ export async function deletePost(userId: string, postId: string) {
   if (media.length) {
     await supabaseAdmin.storage.from("posts").remove(media.map((m) => m.path));
   }
+  await supabaseAdmin.from("notifications").delete().eq("post_id", postId);
+  await supabaseAdmin.from("post_views").delete().eq("post_id", postId);
   await supabaseAdmin.from("post_comments").delete().eq("post_id", postId);
   await supabaseAdmin.from("post_reactions").delete().eq("post_id", postId);
   const { error } = await supabaseAdmin.from("posts").delete().eq("id", postId);
   if (error) throw new Error(error.message);
   return { ok: true };
 }
+
 
 export async function listFeed(userId: string): Promise<FeedPost[]> {
   const { data: profile } = await supabaseAdmin
