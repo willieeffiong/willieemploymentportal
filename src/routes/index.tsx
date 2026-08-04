@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import officeAsset from "@/assets/office.asset.json";
 import sponsorAsset from "@/assets/sponsor.asset.json";
 import { Button } from "@/components/ui/button";
 import { PortalFooter, PortalLogo } from "@/components/PortalChrome";
 import { DeadlineCountdown } from "@/components/DeadlineCountdown";
 import { ENGINEERING_FIELDS } from "@/lib/portal-data";
+import { fetchApplicationPeriod } from "@/lib/portal.functions";
+
 
 const title = "WILLIE LAB TECH — Engineering Empowerment Portal";
 const description =
@@ -25,6 +29,19 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const [blocked, setBlocked] = useState(false);
+
+  const { data: period } = useQuery({
+    queryKey: ["application-period"],
+    queryFn: () => fetchApplicationPeriod(),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
+
+  const closed = Boolean(
+    period && (period.manuallyClosed || new Date(period.deadline).getTime() <= Date.now()),
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-hero pb-10 text-primary-foreground">
@@ -47,13 +64,33 @@ function Home() {
           </div>
 
           <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3">
-            <Button
-              asChild
-              size="lg"
-              className="bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
-            >
-              <Link to="/register">Apply Now</Link>
-            </Button>
+            {closed ? (
+              <>
+                <Button
+                  type="button"
+                  size="lg"
+                  aria-disabled
+                  onClick={() => setBlocked(true)}
+                  className="bg-accent/60 text-accent-foreground hover:bg-accent/60"
+                >
+                  Apply Now
+                </Button>
+                {blocked ? (
+                  <p className="rounded-lg border-2 border-destructive bg-destructive/15 px-3 py-2 text-sm font-bold text-destructive-foreground">
+                    The application has been closed, please try again later.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <Button
+                asChild
+                size="lg"
+                className="bg-accent text-accent-foreground shadow-glow hover:bg-accent/90"
+              >
+                <Link to="/register">Apply Now</Link>
+              </Button>
+            )}
+
             <Button
               asChild
               size="lg"

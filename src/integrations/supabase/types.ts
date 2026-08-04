@@ -20,6 +20,9 @@ export type Database = {
           deadline: string
           deadline_change: string | null
           deadline_changed_at: string | null
+          extra_ai_base_url: string | null
+          extra_ai_key: string | null
+          extra_ai_model: string | null
           id: number
           manually_closed: boolean
           updated_at: string
@@ -29,6 +32,9 @@ export type Database = {
           deadline?: string
           deadline_change?: string | null
           deadline_changed_at?: string | null
+          extra_ai_base_url?: string | null
+          extra_ai_key?: string | null
+          extra_ai_model?: string | null
           id?: number
           manually_closed?: boolean
           updated_at?: string
@@ -38,6 +44,9 @@ export type Database = {
           deadline?: string
           deadline_change?: string | null
           deadline_changed_at?: string | null
+          extra_ai_base_url?: string | null
+          extra_ai_key?: string | null
+          extra_ai_model?: string | null
           id?: number
           manually_closed?: boolean
           updated_at?: string
@@ -207,6 +216,7 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          post_id: string | null
           read: boolean
           title: string
           user_id: string
@@ -215,6 +225,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          post_id?: string | null
           read?: boolean
           title: string
           user_id: string
@@ -223,6 +234,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          post_id?: string | null
           read?: boolean
           title?: string
           user_id?: string
@@ -280,6 +292,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_views: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_views_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"

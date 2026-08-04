@@ -13,7 +13,7 @@ import {
 } from "@/lib/portal.functions";
 import { Button } from "@/components/ui/button";
 
-export const ASSISTANT_NAME = "Willie Lab Tech AI";
+export const ASSISTANT_NAME = "WILLSVAYNE AI";
 
 export function AssistantIcon({ className = "h-9 w-9" }: { className?: string }) {
   return (
@@ -22,6 +22,19 @@ export function AssistantIcon({ className = "h-9 w-9" }: { className?: string })
     >
       <img src={aiIcon} alt={`${ASSISTANT_NAME} icon`} className="h-full w-full object-cover" />
     </span>
+  );
+}
+
+/** The AI mark with an orbital ring spinning around it while a reply is being generated. */
+export function AssistantThinking() {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="relative grid h-11 w-11 place-items-center">
+        <span className="absolute inset-0 animate-spin rounded-full border-2 border-accent border-t-transparent border-r-transparent" />
+        <AssistantIcon className="h-8 w-8" />
+      </span>
+      <span className="text-xs font-semibold text-muted-foreground">{ASSISTANT_NAME} is thinking…</span>
+    </div>
   );
 }
 
@@ -302,7 +315,7 @@ export function AssistantChat() {
                 {turn.attachment_name ? (
                   <p className="mb-1 text-xs font-semibold opacity-80">📎 {turn.attachment_name}</p>
                 ) : null}
-                {turn.content || (streaming ? "Thinking…" : "")}
+                {turn.content || (turn.role === "assistant" && streaming ? <AssistantThinking /> : "")}
                 {turn.role === "assistant" && turn.content ? (
                   <button
                     type="button"
@@ -343,9 +356,15 @@ export function AssistantChat() {
           >
             <Paperclip className="h-5 w-5" />
           </button>
-          <input
+          <textarea
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            rows={1}
+            onChange={(event) => {
+              setInput(event.target.value);
+              const node = event.currentTarget;
+              node.style.height = "auto";
+              node.style.height = `${Math.min(node.scrollHeight, 72)}px`;
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
@@ -353,7 +372,7 @@ export function AssistantChat() {
               }
             }}
             placeholder={`Ask ${ASSISTANT_NAME}…`}
-            className="min-w-0 flex-1 bg-transparent px-1 text-sm outline-none"
+            className="max-h-[72px] min-h-[24px] min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-1 text-sm leading-6 outline-none"
           />
           <button
             type="button"

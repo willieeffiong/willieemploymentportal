@@ -360,6 +360,40 @@ export const commentOnPost = createServerFn({ method: "POST" })
     return addComment(context.userId, data.postId, data.body);
   });
 
+export const markPostSeen = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { markPostSeen: mark } = await import("./posts.server");
+    return mark(context.userId, data.postId);
+  });
+
+/* ---------------- Extra AI provider (admin) ---------------- */
+
+export const getExtraAiProvider = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { readExtraProvider } = await import("./ai-provider.server");
+    return readExtraProvider(context.userId);
+  });
+
+export const saveExtraAiProvider = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        baseUrl: z.string().trim().max(300),
+        model: z.string().trim().max(120),
+        apiKey: z.string().trim().max(400),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const { writeExtraProvider } = await import("./ai-provider.server");
+    return writeExtraProvider(context.userId, data);
+  });
+
+
 /* ---------------- Public enquiries ---------------- */
 
 export const sendPublicEnquiry = createServerFn({ method: "POST" })
