@@ -187,18 +187,21 @@ export async function listFeed(userId: string): Promise<FeedPost[]> {
       const media = await signMedia((post.media as MediaItem[] | null) ?? []);
       return {
         id: post.id,
-
-      body: post.body,
-      audience: post.audience,
-      created_at: post.created_at,
-      media: await signMedia((post.media as MediaItem[] | null) ?? []),
-      reactions: (reactions ?? []).filter((r) => r.post_id === post.id).length,
-      reacted: (reactions ?? []).some((r) => r.post_id === post.id && r.user_id === userId),
-      comments: (comments ?? [])
-        .filter((c) => c.post_id === post.id)
-        .map((c) => ({ id: c.id, body: c.body, created_at: c.created_at, author: nameOf(c.user_id) })),
-    })),
+        body: post.body,
+        audience: post.audience,
+        created_at: post.created_at,
+        media,
+        reactions: (reactions ?? []).filter((r) => r.post_id === post.id).length,
+        reacted: (reactions ?? []).some((r) => r.post_id === post.id && r.user_id === userId),
+        comments: (comments ?? [])
+          .filter((c) => c.post_id === post.id)
+          .map((c) => ({ id: c.id, body: c.body, created_at: c.created_at, author: nameOf(c.user_id) })),
+        album: albumOf(media),
+        seen: admin || seenIds.has(post.id),
+      };
+    }),
   );
+
 }
 
 export async function toggleReaction(userId: string, postId: string) {
