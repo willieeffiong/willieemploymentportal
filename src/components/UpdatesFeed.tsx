@@ -263,11 +263,20 @@ export function UpdatesFeed({ isAdmin = false }: { isAdmin?: boolean }) {
               <span className="relative block h-24 w-full bg-secondary">
                 {cover && cover.type.startsWith("image") ? (
                   <img src={cover.url} alt={`${album.label} album cover`} className="h-24 w-full object-cover" />
+                ) : cover && cover.type.startsWith("video") ? (
+                  <video
+                    src={cover.url}
+                    className="h-24 w-full bg-black object-cover"
+                    muted
+                    playsInline
+                    preload="auto"
+                  />
                 ) : (
                   <span className="grid h-24 w-full place-items-center text-primary">
                     <Icon className="h-8 w-8" />
                   </span>
                 )}
+
                 {hasNew ? (
                   <span className="absolute top-1 right-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">
                     NEW

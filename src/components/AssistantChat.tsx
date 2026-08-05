@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { History, Mic, Paperclip, Send, Square, Trash2, Volume2, X } from "lucide-react";
+import { History, Mic, Paperclip, Send, Square, Trash2, Volume2 } from "lucide-react";
 import aiIcon from "@/assets/ai-icon.png";
 import { supabase } from "@/integrations/supabase/client";
 import {
