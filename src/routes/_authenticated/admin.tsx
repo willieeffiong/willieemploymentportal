@@ -81,6 +81,15 @@ const MENU = [
 type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
 type Detail = Awaited<ReturnType<typeof getApplicant>>;
 
+/** Best-effort media type from a stored file name, so previews render correctly. */
+function guessType(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "webp", "gif", "heic"].includes(ext)) return `image/${ext === "jpg" ? "jpeg" : ext}`;
+  if (["mp4", "webm", "mov", "m4v"].includes(ext)) return `video/${ext === "mov" ? "quicktime" : ext}`;
+  if (ext === "pdf") return "application/pdf";
+  return "application/octet-stream";
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     accepted: "bg-primary text-primary-foreground",
