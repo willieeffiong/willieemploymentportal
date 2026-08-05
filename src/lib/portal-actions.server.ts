@@ -40,9 +40,14 @@ export async function register(input: {
 }) {
   const email = normalizeEmail(input.email);
 
+  if (email === normalizeEmail(ADMIN_EMAIL)) {
+    throw new Error("This email belongs to the administrator and cannot be used for an applicant account.");
+  }
+
   if (!isThreeNames(input.fullName)) {
     throw new Error("Please enter your full name (first, middle, and surname).");
   }
+
 
   await assertApplicationsOpen();
 
