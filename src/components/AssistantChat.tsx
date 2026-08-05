@@ -339,14 +339,11 @@ export function AssistantChat() {
 
 
         {file ? (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm">
-            <Paperclip className="h-4 w-4 text-primary" />
-            <span className="min-w-0 flex-1 truncate">{file.name}</span>
-            <button type="button" aria-label="Remove attachment" onClick={() => setFile(null)}>
-              <X className="h-4 w-4" />
-            </button>
+          <div className="mt-3 max-w-[220px]">
+            <LocalFilePreviews files={[file]} onRemove={() => setFile(null)} />
           </div>
         ) : null}
+
 
         <div className="sticky bottom-0 mt-3 flex items-center gap-2 rounded-full border bg-background px-2 py-1.5 shadow-soft">
           <input
