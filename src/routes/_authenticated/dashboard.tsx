@@ -112,9 +112,11 @@ interface Doc {
   file_name: string;
   file_path: string;
   category: string;
+  content_type: string | null;
   verification_note: string | null;
   created_at: string;
 }
+
 
 interface Note {
   id: string;
