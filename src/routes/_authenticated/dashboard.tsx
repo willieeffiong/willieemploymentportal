@@ -263,10 +263,22 @@ function Dashboard() {
         setAvatarSrc(null);
       }
     }
-    setDocs((d ?? []) as unknown as Doc[]);
+    const rows = (d ?? []) as unknown as Doc[];
+    setDocs(rows);
     setNotes((n ?? []) as Note[]);
     setMessages((m ?? []) as unknown as Msg[]);
+
+    const signedEntries = await Promise.all(
+      rows.map(async (doc) => {
+        const { data: signed } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(doc.file_path, 3600);
+        return [doc.id, signed?.signedUrl ?? ""] as const;
+      }),
+    );
+    setDocUrls(Object.fromEntries(signedEntries.filter(([, url]) => url)));
   }, []);
+
 
   useEffect(() => {
     void load();
