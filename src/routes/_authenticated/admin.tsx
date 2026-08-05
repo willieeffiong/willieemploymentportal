@@ -865,46 +865,140 @@ function AdminDashboard() {
         ) : view === "assistant" ? (
           <AssistantChat />
 
+        ) : view === "contact" ? (
+          <ContactPanel onBack={() => setView("home")} />
         ) : view === "settings" ? (
           <section className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Settings</h1>
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h2 className="font-bold text-primary">Change password</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="anp">New password</Label>
-                  <Input id="anp" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acp">Confirm new password</Label>
-                  <Input
-                    id="acp"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button disabled={busy} onClick={savePassword} className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
-                Update password
-              </Button>
-            </div>
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h2 className="font-bold text-primary">Security question</h2>
-              <div className="mt-3 space-y-3">
-                <Select value={question} onValueChange={setQuestion}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SECURITY_QUESTIONS.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Input placeholder="Your answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
-              </div>
-              <Button disabled={busy} onClick={saveQuestion} className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
-                Save security question
-              </Button>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setView("settings-ai")}
+                className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-soft transition-colors hover:bg-secondary"
+              >
+                <Bot className="h-10 w-10 text-accent" />
+                <span className="font-bold text-primary">Set new AI API</span>
+                <span className="text-xs text-muted-foreground">
+                  {aiConnected ? "Extra AI service connected" : "Using Willie Lab Tech AI"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("settings-password")}
+                className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-soft transition-colors hover:bg-secondary"
+              >
+                <KeyRound className="h-10 w-10 text-accent" />
+                <span className="font-bold text-primary">Change password</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("settings-security")}
+                className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-soft transition-colors hover:bg-secondary"
+              >
+                <ShieldQuestion className="h-10 w-10 text-accent" />
+                <span className="font-bold text-primary">Security question</span>
+              </button>
             </div>
           </section>
+        ) : view === "settings-ai" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Settings
+            </button>
+            <h1 className="text-2xl font-bold text-primary">Set a new AI API / provider</h1>
+            <p className="text-sm text-muted-foreground">
+              Add another AI service for WILLSVAYNE AI. Leave every field empty and save to disconnect it and go back
+              to Willie Lab Tech AI only.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="ai-base">AI service address</Label>
+              <Input
+                id="ai-base"
+                value={aiBaseUrl}
+                onChange={(e) => setAiBaseUrl(e.target.value)}
+                placeholder="https://api.example.com/v1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-model">Model name</Label>
+              <Input
+                id="ai-model"
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                placeholder="gpt-4o-mini"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-key">API key</Label>
+              <Input
+                id="ai-key"
+                type="password"
+                value={aiKey}
+                onChange={(e) => setAiKey(e.target.value)}
+                placeholder={aiConnected ? "Saved — type a new key to replace it" : "Paste the API key"}
+              />
+            </div>
+            <Button disabled={busy} onClick={saveAiConnection} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              {busy ? "Checking…" : "Save AI provider"}
+            </Button>
+          </section>
+        ) : view === "settings-password" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Settings
+            </button>
+            <h2 className="text-2xl font-bold text-primary">Change password</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="anp">New password</Label>
+                <Input id="anp" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="acp">Confirm new password</Label>
+                <Input
+                  id="acp"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button disabled={busy} onClick={savePassword} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              Update password
+            </Button>
+          </section>
+        ) : view === "settings-security" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Settings
+            </button>
+            <h2 className="text-2xl font-bold text-primary">Security question</h2>
+            <div className="space-y-3">
+              <Select value={question} onValueChange={setQuestion}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SECURITY_QUESTIONS.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input placeholder="Your answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+            </div>
+            <Button disabled={busy} onClick={saveQuestion} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              Save security question
+            </Button>
+          </section>
+
         ) : view === "notifications" ? (
           <section className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Notifications</h1>
