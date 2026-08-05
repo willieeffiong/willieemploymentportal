@@ -175,6 +175,8 @@ function Dashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [docs, setDocs] = useState<Doc[]>([]);
+  const [docUrls, setDocUrls] = useState<Record<string, string>>({});
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
