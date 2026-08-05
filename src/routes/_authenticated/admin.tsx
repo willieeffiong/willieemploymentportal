@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { ArrowLeft, Bot, KeyRound, ShieldQuestion } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   adminMarkEnquiriesRead,
@@ -13,9 +14,11 @@ import {
   createUpdatePost,
   fetchApplicationPeriod,
   getApplicant,
+  getExtraAiProvider,
   listApplicants,
   reviewApplicant,
   saveApplicationPeriod,
+  saveExtraAiProvider,
   setEmploymentStatus,
   updatePassword,
   updateSecurityQuestion,
@@ -23,6 +26,8 @@ import {
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
 import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
 import { UpdatesFeed } from "@/components/UpdatesFeed";
+import { ContactPanel } from "@/components/ContactPanel";
+import { FilePreview, LocalFilePreviews } from "@/components/FilePreview";
 import { EMPLOYMENT_LABELS, SECURITY_QUESTIONS } from "@/lib/portal-data";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const title = "Admin Dashboard — WILLIE LAB TECH";
 const description = "Review Willie Lab Tech applicants, decisions, messages and analytics.";
@@ -66,12 +72,23 @@ const MENU = [
   { key: "assistant", label: "Research Assistant" },
   { key: "period", label: "Manage Application Period" },
   { key: "notifications", label: "Notifications" },
+  { key: "contact", label: "Contact Us" },
   { key: "settings", label: "Settings" },
+
 ];
 
 
 type Applicant = Awaited<ReturnType<typeof listApplicants>>["applicants"][number];
 type Detail = Awaited<ReturnType<typeof getApplicant>>;
+
+/** Best-effort media type from a stored file name, so previews render correctly. */
+function guessType(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "webp", "gif", "heic"].includes(ext)) return `image/${ext === "jpg" ? "jpeg" : ext}`;
+  if (["mp4", "webm", "mov", "m4v"].includes(ext)) return `video/${ext === "mov" ? "quicktime" : ext}`;
+  if (ext === "pdf") return "application/pdf";
+  return "application/octet-stream";
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -99,6 +116,9 @@ function AdminDashboard() {
   const addPost = useServerFn(createUpdatePost);
   const fetchEnquiries = useServerFn(adminPublicEnquiries);
   const markEnquiries = useServerFn(adminMarkEnquiriesRead);
+  const loadAiProvider = useServerFn(getExtraAiProvider);
+  const saveAiProvider = useServerFn(saveExtraAiProvider);
+
 
 
   const routeSearch = Route.useSearch();
@@ -137,6 +157,12 @@ function AdminDashboard() {
   const [postBody, setPostBody] = useState("");
   const [postFiles, setPostFiles] = useState<File[]>([]);
   const [audience, setAudience] = useState("all");
+
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [aiKey, setAiKey] = useState("");
+  const [aiConnected, setAiConnected] = useState(false);
+
 
 
   function setView(key: string) {
@@ -186,6 +212,34 @@ function AdminDashboard() {
   useEffect(() => {
     void loadEnquiries();
   }, [loadEnquiries]);
+
+  useEffect(() => {
+    void loadAiProvider()
+      .then((provider) => {
+        setAiBaseUrl(provider.baseUrl);
+        setAiModel(provider.model);
+        setAiConnected(provider.connected);
+      })
+      .catch(() => setAiConnected(false));
+  }, [loadAiProvider]);
+
+  async function saveAiConnection() {
+    setBusy(true);
+    try {
+      const result = await saveAiProvider({
+        data: { baseUrl: aiBaseUrl, model: aiModel, apiKey: aiKey },
+      });
+      setAiConnected(result.connected);
+      setAiKey("");
+      toast.success(result.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not connect that AI service.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
 
 
   async function applyPeriod(patch: { deadline?: string; manuallyClosed?: boolean }) {
@@ -473,23 +527,26 @@ function AdminDashboard() {
 
             <div className="mt-4">
               <p className="text-sm font-semibold text-primary">Documents</p>
-              <ul className="mt-2 space-y-2">
-                {detail.documents.length === 0 ? (
-                  <li className="text-sm text-muted-foreground">No documents.</li>
-                ) : (
-                  detail.documents.map((doc) => (
-                    <li key={doc.id} className="flex items-center justify-between gap-3 rounded-md bg-secondary px-3 py-2 text-sm">
-                      <span className="min-w-0 truncate">{doc.file_name}</span>
-                      {doc.url ? (
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="shrink-0 font-semibold text-primary underline">
-                          View
-                        </a>
-                      ) : null}
-                    </li>
-                  ))
-                )}
-              </ul>
+              {detail.documents.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No documents.</p>
+              ) : (
+                <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {detail.documents.map((doc) =>
+                    doc.url ? (
+                      <FilePreview
+                        key={doc.id}
+                        file={{ url: doc.url, name: doc.file_name, type: guessType(doc.file_name) }}
+                      />
+                    ) : (
+                      <p key={doc.id} className="truncate rounded-lg border bg-secondary px-3 py-2 text-sm">
+                        {doc.file_name}
+                      </p>
+                    ),
+                  )}
+                </div>
+              )}
             </div>
+
 
             {detail.profile.status === "pending" ? (
               <div className="mt-5 space-y-2 rounded-lg border-2 border-accent p-4">
@@ -762,17 +819,19 @@ function AdminDashboard() {
               placeholder="Write your update..."
             />
             <div className="space-y-2">
-              <Label htmlFor="post-media">Photos or videos (optional)</Label>
+              <Label htmlFor="post-media">Photos, videos or documents (optional)</Label>
               <Input
                 id="post-media"
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,application/pdf"
                 multiple
                 onChange={(e) => setPostFiles(Array.from(e.target.files ?? []))}
               />
-              {postFiles.length > 0 ? (
-                <p className="text-xs text-muted-foreground">{postFiles.length} file(s) selected</p>
-              ) : null}
+              <LocalFilePreviews
+                files={postFiles}
+                onRemove={(index) => setPostFiles(postFiles.filter((_, i) => i !== index))}
+              />
+
             </div>
             <div className="space-y-2">
               <Label>Who can see this post?</Label>
@@ -806,46 +865,140 @@ function AdminDashboard() {
         ) : view === "assistant" ? (
           <AssistantChat />
 
+        ) : view === "contact" ? (
+          <ContactPanel onBack={() => setView("home")} />
         ) : view === "settings" ? (
           <section className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Settings</h1>
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h2 className="font-bold text-primary">Change password</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="anp">New password</Label>
-                  <Input id="anp" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acp">Confirm new password</Label>
-                  <Input
-                    id="acp"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button disabled={busy} onClick={savePassword} className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
-                Update password
-              </Button>
-            </div>
-            <div className="rounded-xl border bg-card p-5 shadow-soft">
-              <h2 className="font-bold text-primary">Security question</h2>
-              <div className="mt-3 space-y-3">
-                <Select value={question} onValueChange={setQuestion}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SECURITY_QUESTIONS.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Input placeholder="Your answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
-              </div>
-              <Button disabled={busy} onClick={saveQuestion} className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
-                Save security question
-              </Button>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setView("settings-ai")}
+                className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-soft transition-colors hover:bg-secondary"
+              >
+                <Bot className="h-10 w-10 text-accent" />
+                <span className="font-bold text-primary">Set new AI API</span>
+                <span className="text-xs text-muted-foreground">
+                  {aiConnected ? "Extra AI service connected" : "Using Willie Lab Tech AI"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("settings-password")}
+                className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-soft transition-colors hover:bg-secondary"
+              >
+                <KeyRound className="h-10 w-10 text-accent" />
+                <span className="font-bold text-primary">Change password</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("settings-security")}
+                className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-soft transition-colors hover:bg-secondary"
+              >
+                <ShieldQuestion className="h-10 w-10 text-accent" />
+                <span className="font-bold text-primary">Security question</span>
+              </button>
             </div>
           </section>
+        ) : view === "settings-ai" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Settings
+            </button>
+            <h1 className="text-2xl font-bold text-primary">Set a new AI API / provider</h1>
+            <p className="text-sm text-muted-foreground">
+              Add another AI service for WILLSVAYNE AI. Leave every field empty and save to disconnect it and go back
+              to Willie Lab Tech AI only.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="ai-base">AI service address</Label>
+              <Input
+                id="ai-base"
+                value={aiBaseUrl}
+                onChange={(e) => setAiBaseUrl(e.target.value)}
+                placeholder="https://api.example.com/v1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-model">Model name</Label>
+              <Input
+                id="ai-model"
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                placeholder="gpt-4o-mini"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-key">API key</Label>
+              <Input
+                id="ai-key"
+                type="password"
+                value={aiKey}
+                onChange={(e) => setAiKey(e.target.value)}
+                placeholder={aiConnected ? "Saved — type a new key to replace it" : "Paste the API key"}
+              />
+            </div>
+            <Button disabled={busy} onClick={saveAiConnection} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              {busy ? "Checking…" : "Save AI provider"}
+            </Button>
+          </section>
+        ) : view === "settings-password" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Settings
+            </button>
+            <h2 className="text-2xl font-bold text-primary">Change password</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="anp">New password</Label>
+                <Input id="anp" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="acp">Confirm new password</Label>
+                <Input
+                  id="acp"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button disabled={busy} onClick={savePassword} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              Update password
+            </Button>
+          </section>
+        ) : view === "settings-security" ? (
+          <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setView("settings")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Settings
+            </button>
+            <h2 className="text-2xl font-bold text-primary">Security question</h2>
+            <div className="space-y-3">
+              <Select value={question} onValueChange={setQuestion}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SECURITY_QUESTIONS.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input placeholder="Your answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+            </div>
+            <Button disabled={busy} onClick={saveQuestion} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              Save security question
+            </Button>
+          </section>
+
         ) : view === "notifications" ? (
           <section className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Notifications</h1>
@@ -890,7 +1043,7 @@ function AdminDashboard() {
           listView
         )}
       </main>
-      <PortalFooter />
+      <PortalFooter onContact={() => setView("contact")} />
     </div>
   );
 }

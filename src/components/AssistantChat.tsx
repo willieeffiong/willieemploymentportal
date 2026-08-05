@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { History, Mic, Paperclip, Send, Square, Trash2, Volume2, X } from "lucide-react";
+import { History, Mic, Paperclip, Send, Square, Trash2, Volume2 } from "lucide-react";
 import aiIcon from "@/assets/ai-icon.png";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,6 +12,9 @@ import {
   assistantTranscribe,
 } from "@/lib/portal.functions";
 import { Button } from "@/components/ui/button";
+import { MathText } from "@/components/MathText";
+import { LocalFilePreviews } from "@/components/FilePreview";
+
 
 export const ASSISTANT_NAME = "WILLSVAYNE AI";
 
@@ -306,7 +309,7 @@ export function AssistantChat() {
             turns.map((turn) => (
               <div
                 key={turn.id}
-                className={`max-w-[92%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                className={`max-w-[92%] rounded-lg px-3 py-2 text-sm ${
                   turn.role === "assistant"
                     ? "bg-card text-foreground"
                     : "ml-auto bg-primary text-primary-foreground"
@@ -315,7 +318,11 @@ export function AssistantChat() {
                 {turn.attachment_name ? (
                   <p className="mb-1 text-xs font-semibold opacity-80">📎 {turn.attachment_name}</p>
                 ) : null}
-                {turn.content || (turn.role === "assistant" && streaming ? <AssistantThinking /> : "")}
+                {turn.content ? (
+                  <MathText text={turn.content} />
+                ) : turn.role === "assistant" && streaming ? (
+                  <AssistantThinking />
+                ) : null}
                 {turn.role === "assistant" && turn.content ? (
                   <button
                     type="button"
@@ -330,15 +337,13 @@ export function AssistantChat() {
           )}
         </div>
 
+
         {file ? (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm">
-            <Paperclip className="h-4 w-4 text-primary" />
-            <span className="min-w-0 flex-1 truncate">{file.name}</span>
-            <button type="button" aria-label="Remove attachment" onClick={() => setFile(null)}>
-              <X className="h-4 w-4" />
-            </button>
+          <div className="mt-3 max-w-[220px]">
+            <LocalFilePreviews files={[file]} onRemove={() => setFile(null)} />
           </div>
         ) : null}
+
 
         <div className="sticky bottom-0 mt-3 flex items-center gap-2 rounded-full border bg-background px-2 py-1.5 shadow-soft">
           <input

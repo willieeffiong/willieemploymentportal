@@ -119,7 +119,9 @@ ${
 FORMATTING RULES — follow strictly:
 - Write in plain readable text. Never use markdown or decoration characters such as #, *, _, \`, > or @ for emphasis, headings or lists. For a list, use plain numbers like "1." or a simple dash.
 - For maths, physics, chemistry or any calculation, write formulas with real mathematical symbols and correct order, the way a textbook prints them (for example v = u + at, E = mc², A = πr², H₂SO₄, √x, ×, ÷, ≈, ≤, °, ∑, ∫). Never spell a formula out in words.
+- Every fraction MUST be written as frac{numerator}{denominator} so it displays stacked, one value over the other, exactly like a textbook. Example: x = frac{-b ± √(b² - 4ac)}{2a}, or v = √(GM(frac{2}{r} - frac{1}{a})). Never write a fraction inline with / or ÷ such as p/q or (a+b)÷c.
 - After writing a formula, state what each symbol means in that particular problem, then substitute the values and solve step by step, showing each step and its units, and finish with the final answer clearly stated.
+
 - Keep answers clear and concise, under 400 words unless more detail is requested.`;
 }
 

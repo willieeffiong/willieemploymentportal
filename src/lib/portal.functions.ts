@@ -127,9 +127,11 @@ const emailSchema = z.object({ email: z.string().trim().email().max(255) });
 export const checkLoginAllowed = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => emailSchema.parse(data))
   .handler(async ({ data }) => {
-    const { assertNotLocked } = await import("./portal-auth.server");
+    const { assertNotLocked, assertApplicantEmail } = await import("./portal-auth.server");
+    assertApplicantEmail(data.email);
     return assertNotLocked(data.email);
   });
+
 
 export const reportLoginResult = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => emailSchema.extend({ success: z.boolean() }).parse(data))

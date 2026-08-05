@@ -1,11 +1,21 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  ADMIN_EMAIL,
   MAX_LOGIN_ATTEMPTS,
   LOCKOUT_MINUTES,
   hashSecurityAnswer,
   normalizeEmail,
   verifySecurityAnswer,
 } from "./portal.server";
+
+/** The admin address may only be used on the Admin login screen. */
+export function assertApplicantEmail(rawEmail: string) {
+  if (normalizeEmail(rawEmail) === normalizeEmail(ADMIN_EMAIL)) {
+    throw new Error("This email belongs to the administrator. Please use the Admin login instead.");
+  }
+  return { ok: true };
+}
+
 
 /** Throws when the account is temporarily locked after too many failed attempts. */
 export async function assertNotLocked(rawEmail: string) {
