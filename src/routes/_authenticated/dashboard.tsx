@@ -17,6 +17,9 @@ import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
 import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
 import { UpdatesFeed } from "@/components/UpdatesFeed";
 import { DeadlineCountdown } from "@/components/DeadlineCountdown";
+import { ContactPanel } from "@/components/ContactPanel";
+import { FilePreview } from "@/components/FilePreview";
+
 
 import {
   ENGINEERING_FIELDS,
@@ -75,8 +78,10 @@ const MENU = [
   { key: "feedback", label: "Feedback / Chat" },
   { key: "assistant", label: "Research Assistant" },
   { key: "notifications", label: "Notifications" },
+  { key: "contact", label: "Contact Us" },
   { key: "settings", label: "Settings" },
 ];
+
 
 interface Profile {
   id: string;
