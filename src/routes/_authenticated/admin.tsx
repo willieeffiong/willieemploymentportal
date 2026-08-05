@@ -204,6 +204,34 @@ function AdminDashboard() {
     void loadEnquiries();
   }, [loadEnquiries]);
 
+  useEffect(() => {
+    void loadAiProvider()
+      .then((provider) => {
+        setAiBaseUrl(provider.baseUrl);
+        setAiModel(provider.model);
+        setAiConnected(provider.connected);
+      })
+      .catch(() => setAiConnected(false));
+  }, [loadAiProvider]);
+
+  async function saveAiConnection() {
+    setBusy(true);
+    try {
+      const result = await saveAiProvider({
+        data: { baseUrl: aiBaseUrl, model: aiModel, apiKey: aiKey },
+      });
+      setAiConnected(result.connected);
+      setAiKey("");
+      toast.success(result.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not connect that AI service.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+
 
   async function applyPeriod(patch: { deadline?: string; manuallyClosed?: boolean }) {
     setBusy(true);
