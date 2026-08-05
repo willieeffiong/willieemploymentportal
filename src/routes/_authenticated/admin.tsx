@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { ArrowLeft, Bot, KeyRound, ShieldQuestion } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   adminMarkEnquiriesRead,
@@ -13,9 +14,11 @@ import {
   createUpdatePost,
   fetchApplicationPeriod,
   getApplicant,
+  getExtraAiProvider,
   listApplicants,
   reviewApplicant,
   saveApplicationPeriod,
+  saveExtraAiProvider,
   setEmploymentStatus,
   updatePassword,
   updateSecurityQuestion,
@@ -23,6 +26,8 @@ import {
 import { PortalAppHeader, PortalFooter } from "@/components/PortalChrome";
 import { AssistantBanner, AssistantChat } from "@/components/AssistantChat";
 import { UpdatesFeed } from "@/components/UpdatesFeed";
+import { ContactPanel } from "@/components/ContactPanel";
+import { FilePreview, LocalFilePreviews } from "@/components/FilePreview";
 import { EMPLOYMENT_LABELS, SECURITY_QUESTIONS } from "@/lib/portal-data";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const title = "Admin Dashboard — WILLIE LAB TECH";
 const description = "Review Willie Lab Tech applicants, decisions, messages and analytics.";
