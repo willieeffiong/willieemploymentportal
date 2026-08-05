@@ -154,23 +154,38 @@ export function PortalAppHeader({
   );
 }
 
-export function PortalFooter() {
+/**
+ * Site footer. Inside a dashboard, pass `onContact` so Contact Us opens in the
+ * logged-in session instead of navigating away to the public page.
+ */
+export function PortalFooter({ onContact }: { onContact?: () => void }) {
   return (
     <footer className="mt-12 border-t bg-secondary">
       <div className="mx-auto max-w-5xl px-4 py-6 text-center text-sm text-muted-foreground">
         Willie Lab Tech Empowerment Portal · Sponsored by Engr. Willie Effiong
         <div className="mt-5">
-          <Button
-            asChild
-            size="lg"
-            className="w-full max-w-xs bg-accent text-base font-bold text-accent-foreground shadow-glow hover:bg-accent/90"
-          >
-            <Link to="/contact">Need help? Contact Us</Link>
-          </Button>
+          {onContact ? (
+            <Button
+              size="lg"
+              onClick={onContact}
+              className="w-full max-w-xs bg-accent text-base font-bold text-accent-foreground shadow-glow hover:bg-accent/90"
+            >
+              Need help? Contact Us
+            </Button>
+          ) : (
+            <Button
+              asChild
+              size="lg"
+              className="w-full max-w-xs bg-accent text-base font-bold text-accent-foreground shadow-glow hover:bg-accent/90"
+            >
+              <Link to="/contact">Need help? Contact Us</Link>
+            </Button>
+          )}
           <p className="mt-2 text-xs">Email, WhatsApp, Facebook or send a message to the admin.</p>
         </div>
       </div>
     </footer>
   );
 }
+
 
