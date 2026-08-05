@@ -819,17 +819,19 @@ function AdminDashboard() {
               placeholder="Write your update..."
             />
             <div className="space-y-2">
-              <Label htmlFor="post-media">Photos or videos (optional)</Label>
+              <Label htmlFor="post-media">Photos, videos or documents (optional)</Label>
               <Input
                 id="post-media"
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,application/pdf"
                 multiple
                 onChange={(e) => setPostFiles(Array.from(e.target.files ?? []))}
               />
-              {postFiles.length > 0 ? (
-                <p className="text-xs text-muted-foreground">{postFiles.length} file(s) selected</p>
-              ) : null}
+              <LocalFilePreviews
+                files={postFiles}
+                onRemove={(index) => setPostFiles(postFiles.filter((_, i) => i !== index))}
+              />
+
             </div>
             <div className="space-y-2">
               <Label>Who can see this post?</Label>
