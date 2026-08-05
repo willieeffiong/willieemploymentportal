@@ -72,7 +72,9 @@ const MENU = [
   { key: "assistant", label: "Research Assistant" },
   { key: "period", label: "Manage Application Period" },
   { key: "notifications", label: "Notifications" },
+  { key: "contact", label: "Contact Us" },
   { key: "settings", label: "Settings" },
+
 ];
 
 
