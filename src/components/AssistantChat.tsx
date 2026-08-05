@@ -12,6 +12,9 @@ import {
   assistantTranscribe,
 } from "@/lib/portal.functions";
 import { Button } from "@/components/ui/button";
+import { MathText } from "@/components/MathText";
+import { LocalFilePreviews } from "@/components/FilePreview";
+
 
 export const ASSISTANT_NAME = "WILLSVAYNE AI";
 
@@ -306,7 +309,7 @@ export function AssistantChat() {
             turns.map((turn) => (
               <div
                 key={turn.id}
-                className={`max-w-[92%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                className={`max-w-[92%] rounded-lg px-3 py-2 text-sm ${
                   turn.role === "assistant"
                     ? "bg-card text-foreground"
                     : "ml-auto bg-primary text-primary-foreground"
@@ -315,7 +318,11 @@ export function AssistantChat() {
                 {turn.attachment_name ? (
                   <p className="mb-1 text-xs font-semibold opacity-80">📎 {turn.attachment_name}</p>
                 ) : null}
-                {turn.content || (turn.role === "assistant" && streaming ? <AssistantThinking /> : "")}
+                {turn.content ? (
+                  <MathText text={turn.content} />
+                ) : turn.role === "assistant" && streaming ? (
+                  <AssistantThinking />
+                ) : null}
                 {turn.role === "assistant" && turn.content ? (
                   <button
                     type="button"
@@ -329,6 +336,7 @@ export function AssistantChat() {
             ))
           )}
         </div>
+
 
         {file ? (
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm">
