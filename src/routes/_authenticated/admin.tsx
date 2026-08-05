@@ -518,23 +518,26 @@ function AdminDashboard() {
 
             <div className="mt-4">
               <p className="text-sm font-semibold text-primary">Documents</p>
-              <ul className="mt-2 space-y-2">
-                {detail.documents.length === 0 ? (
-                  <li className="text-sm text-muted-foreground">No documents.</li>
-                ) : (
-                  detail.documents.map((doc) => (
-                    <li key={doc.id} className="flex items-center justify-between gap-3 rounded-md bg-secondary px-3 py-2 text-sm">
-                      <span className="min-w-0 truncate">{doc.file_name}</span>
-                      {doc.url ? (
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="shrink-0 font-semibold text-primary underline">
-                          View
-                        </a>
-                      ) : null}
-                    </li>
-                  ))
-                )}
-              </ul>
+              {detail.documents.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No documents.</p>
+              ) : (
+                <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {detail.documents.map((doc) =>
+                    doc.url ? (
+                      <FilePreview
+                        key={doc.id}
+                        file={{ url: doc.url, name: doc.file_name, type: guessType(doc.file_name) }}
+                      />
+                    ) : (
+                      <p key={doc.id} className="truncate rounded-lg border bg-secondary px-3 py-2 text-sm">
+                        {doc.file_name}
+                      </p>
+                    ),
+                  )}
+                </div>
+              )}
             </div>
+
 
             {detail.profile.status === "pending" ? (
               <div className="mt-5 space-y-2 rounded-lg border-2 border-accent p-4">
