@@ -759,30 +759,38 @@ function Dashboard() {
           onChange={(e) => e.target.files && uploadDocs(e.target.files)}
         />
 
-        <ul className="mt-3 space-y-2">
-          {docs.length === 0 ? (
-            <li className="text-sm text-muted-foreground">No documents uploaded yet.</li>
-          ) : (
-            docs.map((doc) => (
-              <li key={doc.id} className="flex items-center justify-between gap-3 rounded-md bg-card px-3 py-2 text-sm">
-                <span className="min-w-0">
-                  <span className="block truncate">{doc.file_name}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {doc.category === "skill" ? "Skills evidence" : "Qualification"}
-                  </span>
-                </span>
-                <span className="flex shrink-0 gap-3">
-                  <button type="button" onClick={() => openDoc(doc)} className="font-semibold text-primary underline">
-                    View
+        {docs.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No documents uploaded yet.</p>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {docs.map((doc) => (
+              <div key={doc.id}>
+                {docUrls[doc.id] ? (
+                  <FilePreview
+                    file={{
+                      url: docUrls[doc.id],
+                      name: doc.file_name,
+                      type: doc.content_type ?? "application/octet-stream",
+                    }}
+                    onRemove={() => deleteDoc(doc)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openDoc(doc)}
+                    className="block w-full truncate rounded-lg border bg-card px-3 py-2 text-left text-sm font-semibold text-primary underline"
+                  >
+                    {doc.file_name}
                   </button>
-                  <button type="button" onClick={() => deleteDoc(doc)} className="font-semibold text-destructive underline">
-                    Remove
-                  </button>
-                </span>
-              </li>
-            ))
-          )}
-        </ul>
+                )}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {doc.category === "skill" ? "Skills evidence" : "Qualification"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
 
       <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
