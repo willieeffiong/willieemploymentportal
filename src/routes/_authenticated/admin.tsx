@@ -107,6 +107,9 @@ function AdminDashboard() {
   const addPost = useServerFn(createUpdatePost);
   const fetchEnquiries = useServerFn(adminPublicEnquiries);
   const markEnquiries = useServerFn(adminMarkEnquiriesRead);
+  const loadAiProvider = useServerFn(getExtraAiProvider);
+  const saveAiProvider = useServerFn(saveExtraAiProvider);
+
 
 
   const routeSearch = Route.useSearch();
@@ -145,6 +148,12 @@ function AdminDashboard() {
   const [postBody, setPostBody] = useState("");
   const [postFiles, setPostFiles] = useState<File[]>([]);
   const [audience, setAudience] = useState("all");
+
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [aiKey, setAiKey] = useState("");
+  const [aiConnected, setAiConnected] = useState(false);
+
 
 
   function setView(key: string) {
