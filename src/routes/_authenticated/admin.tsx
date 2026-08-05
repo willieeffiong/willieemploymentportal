@@ -1043,7 +1043,7 @@ function AdminDashboard() {
           listView
         )}
       </main>
-      <PortalFooter />
+      <PortalFooter onContact={() => setView("contact")} />
     </div>
   );
 }
