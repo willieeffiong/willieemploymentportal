@@ -1187,14 +1187,21 @@ function Dashboard() {
           </section>
         ) : null}
 
+        {view === "contact" ? <ContactPanel onBack={() => setView("home")} /> : null}
+
         <p className="mt-10 text-center text-sm text-muted-foreground">
           Need help?{" "}
-          <Link to="/help" className="font-semibold text-primary underline">
+          <button
+            type="button"
+            onClick={() => setView("contact")}
+            className="font-semibold text-primary underline"
+          >
             Contact / Help
-          </Link>
+          </button>
         </p>
       </main>
-      <PortalFooter />
+      <PortalFooter onContact={() => setView("contact")} />
+
     </div>
   );
 }
