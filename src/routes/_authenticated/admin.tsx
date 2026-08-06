@@ -911,27 +911,9 @@ function AdminDashboard() {
             </button>
             <h1 className="text-2xl font-bold text-primary">Set a new AI API / provider</h1>
             <p className="text-sm text-muted-foreground">
-              Add another AI service for WILLSVAYNE AI. Leave every field empty and save to disconnect it and go back
-              to Willie Lab Tech AI only.
+              Only the API key is needed — the service address and model are filled in for you automatically.
+              Leave every field empty and save to disconnect and go back to Willie Lab Tech AI only.
             </p>
-            <div className="space-y-2">
-              <Label htmlFor="ai-base">AI service address</Label>
-              <Input
-                id="ai-base"
-                value={aiBaseUrl}
-                onChange={(e) => setAiBaseUrl(e.target.value)}
-                placeholder="https://api.example.com/v1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ai-model">Model name</Label>
-              <Input
-                id="ai-model"
-                value={aiModel}
-                onChange={(e) => setAiModel(e.target.value)}
-                placeholder="gpt-4o-mini"
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="ai-key">API key</Label>
               <Input
@@ -942,8 +924,27 @@ function AdminDashboard() {
                 placeholder={aiConnected ? "Saved — type a new key to replace it" : "Paste the API key"}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-base">AI service address (optional)</Label>
+              <Input
+                id="ai-base"
+                value={aiBaseUrl}
+                onChange={(e) => setAiBaseUrl(e.target.value)}
+                placeholder="Leave empty — detected from your key"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-model">Model name (optional)</Label>
+              <Input
+                id="ai-model"
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                placeholder="Leave empty — detected from your key"
+              />
+            </div>
             <Button disabled={busy} onClick={saveAiConnection} className="bg-accent text-accent-foreground hover:bg-accent/90">
-              {busy ? "Checking…" : "Save AI provider"}
+              {busy ? "Saving…" : "Save AI provider"}
+            </Button>
             </Button>
           </section>
         ) : view === "settings-password" ? (
