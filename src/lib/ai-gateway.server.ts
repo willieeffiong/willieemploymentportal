@@ -51,17 +51,34 @@ function target(override?: ProviderOverride | null) {
   };
 }
 
-/** Calls the chat completions endpoint and returns the reply text. */
-export async function chatComplete(messages: ChatMessage[], override?: ProviderOverride | null): Promise<string> {
+async function callChat(
+  messages: ChatMessage[],
+  override: ProviderOverride | null | undefined,
+  stream: boolean,
+) {
   const t = target(override);
   const response = await fetch(t.url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${t.key}` },
-    body: JSON.stringify({ ...t.body, messages }),
-  });
+    body: JSON.stringify({ ...t.body, ...(stream ? { stream: true } : {}), messages }),
+  }).catch(() => null);
 
-  if (!response.ok) throw failure(response.status, await response.text());
+  if (!response || !response.ok || (stream && !response.body)) {
+    const status = response?.status ?? 0;
+    const body = response ? await response.text().catch(() => "") : "network error";
+    // A custom provider is a secondary service: if it fails, quietly use Willie Lab Tech AI.
+    if (override) {
+      console.error(`[extra-ai] provider failed [${status}]: ${body} — falling back`);
+      return callChat(messages, null, stream);
+    }
+    throw failure(status, body);
+  }
+  return response;
+}
 
+/** Calls the chat completions endpoint and returns the reply text. */
+export async function chatComplete(messages: ChatMessage[], override?: ProviderOverride | null): Promise<string> {
+  const response = await callChat(messages, override, false);
   const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content?.trim() ?? "";
 }
@@ -71,15 +88,8 @@ export async function chatStream(
   messages: ChatMessage[],
   override?: ProviderOverride | null,
 ): Promise<ReadableStream<Uint8Array>> {
-  const t = target(override);
-  const response = await fetch(t.url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${t.key}` },
-    body: JSON.stringify({ ...t.body, stream: true, messages }),
-  });
-
-  if (!response.ok || !response.body) throw failure(response.status, await response.text().catch(() => ""));
-  return response.body;
+  const response = await callChat(messages, override, true);
+  return response.body!;
 }
 
 
