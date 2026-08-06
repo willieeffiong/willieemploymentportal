@@ -945,7 +945,6 @@ function AdminDashboard() {
             <Button disabled={busy} onClick={saveAiConnection} className="bg-accent text-accent-foreground hover:bg-accent/90">
               {busy ? "Saving…" : "Save AI provider"}
             </Button>
-            </Button>
           </section>
         ) : view === "settings-password" ? (
           <section className="space-y-4 rounded-xl border bg-card p-5 shadow-soft">
