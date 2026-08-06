@@ -58,7 +58,7 @@ function AdminLoginPage() {
       }
 
       toast.success("Welcome, Admin.");
-      navigate({ to: "/admin" });
+      navigate({ to: "/admin", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Admin login failed.");
     } finally {

@@ -53,7 +53,7 @@ function LoginPage() {
 
       await reportResult({ data: { email: cleanEmail, success: true } });
       toast.success("Welcome back!");
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/dashboard", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed.");
     } finally {
