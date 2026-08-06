@@ -238,7 +238,7 @@ export function AssistantChat() {
   }
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+    <section className="grid w-full max-w-full gap-4 overflow-x-hidden lg:grid-cols-[240px_minmax(0,1fr)]">
       <aside className={`rounded-xl border bg-card p-3 shadow-soft ${historyOpen ? "" : "hidden lg:block"}`}>
         <Button
           className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
@@ -281,7 +281,7 @@ export function AssistantChat() {
         </ul>
       </aside>
 
-      <div className="flex min-h-[70vh] flex-col rounded-xl border bg-card p-4 shadow-soft sm:p-5">
+      <div className="flex min-h-[70vh] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-xl border bg-card p-3 shadow-soft sm:p-5">
         <div className="flex items-center gap-3">
           <AssistantIcon />
           <div className="min-w-0">
@@ -300,7 +300,7 @@ export function AssistantChat() {
           </Button>
         </div>
 
-        <div ref={scrollRef} className="mt-4 flex-1 space-y-3 overflow-y-auto rounded-lg bg-secondary p-3">
+        <div ref={scrollRef} className="mt-4 min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto rounded-lg bg-secondary p-3">
           {turns.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Start a conversation — ask a research question, paste a topic, or upload a document.
@@ -309,7 +309,7 @@ export function AssistantChat() {
             turns.map((turn) => (
               <div
                 key={turn.id}
-                className={`max-w-[92%] rounded-lg px-3 py-2 text-sm ${
+                className={`max-w-[92%] min-w-0 overflow-x-auto break-words rounded-lg px-3 py-2 text-sm ${
                   turn.role === "assistant"
                     ? "bg-card text-foreground"
                     : "ml-auto bg-primary text-primary-foreground"
@@ -345,7 +345,7 @@ export function AssistantChat() {
         ) : null}
 
 
-        <div className="sticky bottom-0 mt-3 flex items-center gap-2 rounded-full border bg-background px-2 py-1.5 shadow-soft">
+        <div className="sticky bottom-0 mt-3 flex w-full min-w-0 max-w-full items-end gap-1 rounded-3xl border bg-background px-1.5 py-1.5 shadow-soft sm:gap-2 sm:px-2">
           <input
             ref={fileRef}
             type="file"
@@ -357,7 +357,7 @@ export function AssistantChat() {
             type="button"
             aria-label="Attach an image or document"
             onClick={() => fileRef.current?.click()}
-            className="rounded-full p-2 text-muted-foreground hover:text-primary"
+            className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-primary sm:p-2"
           >
             <Paperclip className="h-5 w-5" />
           </button>
@@ -383,7 +383,7 @@ export function AssistantChat() {
             type="button"
             aria-label={recording ? "Stop recording" : "Record your question"}
             onClick={() => (recording ? stopRecording() : void startRecording())}
-            className={`rounded-full p-2 ${recording ? "text-destructive" : "text-muted-foreground hover:text-primary"}`}
+            className={`shrink-0 rounded-full p-1.5 sm:p-2 ${recording ? "text-destructive" : "text-muted-foreground hover:text-primary"}`}
           >
             {recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
@@ -392,7 +392,7 @@ export function AssistantChat() {
             aria-label="Send message"
             onClick={() => void send()}
             disabled={streaming || working || !input.trim()}
-            className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-50"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
           </button>
