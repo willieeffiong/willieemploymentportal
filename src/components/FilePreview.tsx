@@ -143,18 +143,7 @@ export function FilePreview({
           <DialogTitle className="truncate text-base text-primary">{file.name}</DialogTitle>
           {k === "image" ? (
             <img src={file.url} alt={file.name} className="max-h-[75vh] w-full object-contain" />
-          ) : k === "pdf" || k === "file" ? (
-            <>
-              <iframe src={file.url} title={file.name} className="h-[70vh] w-full rounded-md border" />
-              <a
-                href={file.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm font-semibold text-primary underline"
-              >
-                Open the full document
-              </a>
-            </>
+          ) : (
           ) : (
             <>
               <iframe src={file.url} title={file.name} className="h-[70vh] w-full rounded-md border" />
