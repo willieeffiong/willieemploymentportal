@@ -32,13 +32,35 @@ export async function readExtraProvider(userId: string) {
   };
 }
 
-/** Saves (or clears) the extra AI provider and verifies it answers before storing it. */
+/** Guesses a sensible endpoint and model from the shape of the API key. */
+function defaultsForKey(apiKey: string): { baseUrl: string; model: string } {
+  if (/^sk-ant-/i.test(apiKey)) {
+    return { baseUrl: "https://api.anthropic.com/v1", model: "claude-sonnet-4-20250514" };
+  }
+  if (/^gsk_/i.test(apiKey)) {
+    return { baseUrl: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" };
+  }
+  if (/^sk-or-/i.test(apiKey)) {
+    return { baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini" };
+  }
+  if (/^AIza/.test(apiKey)) {
+    return {
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      model: "gemini-2.0-flash",
+    };
+  }
+  if (/^xai-/i.test(apiKey)) return { baseUrl: "https://api.x.ai/v1", model: "grok-2-latest" };
+  if (/^r8_/i.test(apiKey)) return { baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat" };
+  return { baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" };
+}
+
+/** Saves (or clears) the extra AI provider. Only the API key is required. */
 export async function writeExtraProvider(userId: string, input: ExtraProvider) {
   await requireAdmin(userId);
 
-  const baseUrl = input.baseUrl.trim().replace(/\/+$/, "");
-  const model = input.model.trim();
   const apiKey = input.apiKey.trim();
+  let baseUrl = input.baseUrl.trim().replace(/\/+$/, "");
+  let model = input.model.trim();
 
   if (!baseUrl && !model && !apiKey) {
     await supabaseAdmin
@@ -48,22 +70,12 @@ export async function writeExtraProvider(userId: string, input: ExtraProvider) {
     return { connected: false, message: "Extra AI disconnected. Your assistant now uses Willie Lab Tech AI only." };
   }
 
-  if (!/^https:\/\//i.test(baseUrl)) throw new Error("Enter the AI service address starting with https://");
-  if (!model) throw new Error("Enter the model name for that AI service.");
   if (!apiKey) throw new Error("Enter the API key for that AI service.");
 
-  const probe = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages: [{ role: "user", content: "ping" }] }),
-  }).catch(() => null);
-
-  if (!probe) throw new Error("That AI service could not be reached. Check the address and try again.");
-  if (!probe.ok) {
-    const body = await probe.text().catch(() => "");
-    console.error(`[extra-ai] verification failed [${probe.status}]: ${body}`);
-    throw new Error(`That AI service rejected the key (status ${probe.status}). Check the key and model name.`);
-  }
+  const guessed = defaultsForKey(apiKey);
+  if (!baseUrl) baseUrl = guessed.baseUrl;
+  if (!model) model = guessed.model;
+  if (!/^https?:\/\//i.test(baseUrl)) baseUrl = `https://${baseUrl}`;
 
   const { error } = await supabaseAdmin
     .from("app_settings")
@@ -71,7 +83,10 @@ export async function writeExtraProvider(userId: string, input: ExtraProvider) {
     .eq("id", 1);
   if (error) throw new Error(error.message);
 
-  return { connected: true, message: "Connected. Your assistant will now use this AI service." };
+  return {
+    connected: true,
+    message: `Saved and live. WILLSVAYNE AI will now use ${model} at ${baseUrl}, and falls back to Willie Lab Tech AI if that service fails.`,
+  };
 }
 
 /** Loads the active extra provider for the assistant, or null when none is configured. */

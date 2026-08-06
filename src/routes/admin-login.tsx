@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,13 @@ export const Route = createFileRoute("/admin-login")({
 
 function AdminLoginPage() {
   const navigate = useNavigate();
+
+  // Already signed in (e.g. arrived here with the phone back button): go straight back in.
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/admin", replace: true });
+    });
+  }, [navigate]);
   const ensureAdmin = useServerFn(ensureAdminAccount);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,7 +65,7 @@ function AdminLoginPage() {
       }
 
       toast.success("Welcome, Admin.");
-      navigate({ to: "/admin" });
+      navigate({ to: "/admin", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Admin login failed.");
     } finally {

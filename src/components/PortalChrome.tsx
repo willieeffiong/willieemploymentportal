@@ -114,11 +114,11 @@ export function PortalAppHeader({
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 bg-card p-0">
-              <SheetHeader className="bg-hero px-4 py-4 text-primary-foreground">
+            <SheetContent side="right" className="flex w-72 flex-col bg-card p-0">
+              <SheetHeader className="shrink-0 bg-hero px-4 py-4 text-primary-foreground">
                 <SheetTitle className="text-primary-foreground">Menu</SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col p-2">
+              <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-2 pb-6">
                 {items.map((item) => (
                   <button
                     key={item.key}
@@ -137,7 +137,7 @@ export function PortalAppHeader({
                   </button>
                 ))}
                 <Button
-                  className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
+                  className="mt-3 shrink-0 bg-accent text-accent-foreground hover:bg-accent/90"
                   onClick={() => {
                     setOpen(false);
                     onLogout();
