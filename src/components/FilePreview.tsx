@@ -144,7 +144,6 @@ export function FilePreview({
           {k === "image" ? (
             <img src={file.url} alt={file.name} className="max-h-[75vh] w-full object-contain" />
           ) : (
-          ) : (
             <>
               <iframe src={file.url} title={file.name} className="h-[70vh] w-full rounded-md border" />
               <a
