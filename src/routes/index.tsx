@@ -140,7 +140,7 @@ function Home() {
       <section className="mx-auto max-w-5xl px-4 pb-14">
         <h2 className="text-center text-2xl font-bold text-primary sm:text-3xl">Engineering Fields We Recruit</h2>
         <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
-          Twenty engineering disciplines are open for this recruitment drive.
+          Twenty-one engineering disciplines are open for this recruitment drive.
         </p>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {ENGINEERING_FIELDS.map((field) => (

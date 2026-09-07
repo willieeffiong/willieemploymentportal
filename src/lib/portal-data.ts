@@ -1,4 +1,5 @@
 import aerospace from "@/assets/fields/aerospace.jpg";
+import architectural from "@/assets/fields/architectural.jpg";
 import agricultural from "@/assets/fields/agricultural.jpg";
 import automotive from "@/assets/fields/automotive.jpg";
 import biomedical from "@/assets/fields/biomedical.jpg";
@@ -65,6 +66,7 @@ export interface EngineeringField {
 }
 
 export const ENGINEERING_FIELDS: EngineeringField[] = [
+  { name: "Architectural Engineering", image: architectural, blurb: "Building design, structural integration, and construction systems." },
   { name: "Aerospace Engineering", image: aerospace, blurb: "Aircraft, avionics and flight systems." },
   { name: "Electrical Engineering", image: electrical, blurb: "Power generation, distribution and controls." },
   { name: "Civil Engineering", image: civil, blurb: "Roads, bridges and public infrastructure." },
