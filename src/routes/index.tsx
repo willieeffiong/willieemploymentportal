@@ -47,7 +47,7 @@ function Home() {
           <PortalLogo className="h-36 w-36 sm:h-44 sm:w-44" />
 
           <img
-            src="/assets/aistudio/Screenshot_20261110-214338_d6c92505.jpg"
+            src="/assets/office-desk.jpg"
             alt="Engr. Willie Effiong working at his office desk"
             className="mx-auto mt-8 w-full max-w-md rounded-xl border-4 border-accent object-cover shadow-glow"
           />
@@ -124,7 +124,7 @@ function Home() {
 
         <figure className="mt-10">
           <img
-            src="/assets/aistudio/Screenshot_20261111-080335_9df20b6b.jpg"
+            src="/assets/sponsor-portrait.jpg"
             alt="Engr. Willie Effiong — Sponsor"
             className="mx-auto w-full max-w-md rounded-xl border-4 border-primary object-cover shadow-soft"
             loading="lazy"
