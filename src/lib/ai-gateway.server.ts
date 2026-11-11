@@ -17,11 +17,13 @@ export interface ChatMessage {
   content: ChatContent;
 }
 
-function apiKey() {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("The AI assistant is not configured yet.");
-  return key;
+function apiKey(): string | null {
+  return process.env.LOVABLE_API_KEY || null;
 }
+
+const MOCK_AI_REPLY =
+  "I'm running in offline preview mode because LOVABLE_API_KEY is not configured yet. " +
+  "Once configured, I can answer engineering questions, review your documents, and assist with your Willie Lab Tech application.";
 
 function failure(status: number, body: string): Error {
   console.error(`[ai-gateway] request failed [${status}]: ${body}`);
@@ -44,9 +46,11 @@ function target(override?: ProviderOverride | null) {
       body: { model: override.model } as Record<string, unknown>,
     };
   }
+  const key = apiKey();
+  if (!key) return null;
   return {
     url: `${BASE_URL}/chat/completions`,
-    key: apiKey(),
+    key,
     body: { model: CHAT_MODEL, reasoning_effort: "none" } as Record<string, unknown>,
   };
 }
@@ -57,6 +61,7 @@ async function callChat(
   stream: boolean,
 ) {
   const t = target(override);
+  if (!t) return null;
   const response = await fetch(t.url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${t.key}` },
@@ -79,6 +84,7 @@ async function callChat(
 /** Calls the chat completions endpoint and returns the reply text. */
 export async function chatComplete(messages: ChatMessage[], override?: ProviderOverride | null): Promise<string> {
   const response = await callChat(messages, override, false);
+  if (!response) return MOCK_AI_REPLY;
   const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content?.trim() ?? "";
 }
@@ -89,19 +95,31 @@ export async function chatStream(
   override?: ProviderOverride | null,
 ): Promise<ReadableStream<Uint8Array>> {
   const response = await callChat(messages, override, true);
+  if (!response) {
+    const encoder = new TextEncoder();
+    const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: MOCK_AI_REPLY } }] })}\n\ndata: [DONE]\n\n`;
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(payload));
+        controller.close();
+      },
+    });
+  }
   return response.body!;
 }
 
 
 /** Transcribes a recorded audio clip and returns the text. */
 export async function transcribeAudio(audio: Blob, filename: string): Promise<string> {
+  const key = apiKey();
+  if (!key) return "Audio transcription is unavailable in offline preview mode.";
   const form = new FormData();
   form.append("model", TRANSCRIBE_MODEL);
   form.append("file", audio, filename);
 
   const response = await fetch(`${BASE_URL}/audio/transcriptions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}` },
+    headers: { Authorization: `Bearer ${key}` },
     body: form,
   });
 
@@ -117,9 +135,11 @@ export async function transcribeAudio(audio: Blob, filename: string): Promise<st
 
 /** Renders text to speech and returns base64-encoded MP3 audio. */
 export async function speakText(text: string): Promise<string> {
+  const key = apiKey();
+  if (!key) return "";
   const response = await fetch(`${BASE_URL}/audio/speech`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey()}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model: TTS_MODEL,
       input: text.slice(0, 4000),

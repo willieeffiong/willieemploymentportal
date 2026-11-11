@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Bell, Menu } from "lucide-react";
-import logoAsset from "@/assets/logo.asset.json";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,12 +13,12 @@ import {
 export function PortalLogo({ className = "h-11 w-11" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-foreground ring-2 ring-accent ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-accent ${className}`}
     >
       <img
-        src={logoAsset.url}
-        alt="Willie Lab Tech logo"
-        className="h-full w-full scale-105 rounded-full object-cover"
+        src="/assets/studio-logo.png"
+        alt="Will's Photographic Studio Ltd logo"
+        className="h-full w-full rounded-full object-cover"
       />
     </span>
   );

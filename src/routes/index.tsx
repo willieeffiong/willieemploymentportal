@@ -1,8 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import officeAsset from "@/assets/office.asset.json";
-import sponsorAsset from "@/assets/sponsor.asset.json";
 import { Button } from "@/components/ui/button";
 import { PortalFooter, PortalLogo } from "@/components/PortalChrome";
 import { DeadlineCountdown } from "@/components/DeadlineCountdown";
@@ -49,7 +47,7 @@ function Home() {
           <PortalLogo className="h-36 w-36 sm:h-44 sm:w-44" />
 
           <img
-            src={officeAsset.url}
+            src="/assets/aistudio/Screenshot_20261110-214338_d6c92505.jpg"
             alt="Engr. Willie Effiong working at his office desk"
             className="mx-auto mt-8 w-full max-w-md rounded-xl border-4 border-accent object-cover shadow-glow"
           />
@@ -126,8 +124,8 @@ function Home() {
 
         <figure className="mt-10">
           <img
-            src={sponsorAsset.url}
-            alt="Engr. Willie Effiong standing in front of a gated property"
+            src="/assets/aistudio/Screenshot_20261111-080335_9df20b6b.jpg"
+            alt="Engr. Willie Effiong — Sponsor"
             className="mx-auto w-full max-w-md rounded-xl border-4 border-primary object-cover shadow-soft"
             loading="lazy"
           />

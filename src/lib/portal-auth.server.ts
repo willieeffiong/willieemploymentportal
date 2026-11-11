@@ -131,11 +131,23 @@ export interface ApplicationPeriod {
 }
 
 export async function getApplicationPeriod(): Promise<ApplicationPeriod> {
-  const { data } = await supabaseAdmin
-    .from("app_settings")
-    .select("deadline, manually_closed, deadline_change, deadline_changed_at")
-    .eq("id", 1)
-    .maybeSingle();
+  let data: {
+    deadline?: string | null;
+    manually_closed?: boolean | null;
+    deadline_change?: string | null;
+    deadline_changed_at?: string | null;
+  } | null = null;
+
+  try {
+    const res = await supabaseAdmin
+      .from("app_settings")
+      .select("deadline, manually_closed, deadline_change, deadline_changed_at")
+      .eq("id", 1)
+      .maybeSingle();
+    data = res.data;
+  } catch (err) {
+    console.warn("[AI Studio] Supabase not configured — using default application period", err);
+  }
 
   const deadline = data?.deadline ?? "2026-08-10T23:59:59+01:00";
   const manuallyClosed = data?.manually_closed ?? false;

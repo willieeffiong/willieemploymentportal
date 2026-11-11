@@ -31,7 +31,7 @@ const employmentSchema = z.object({
 const messageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
 
 export const registerApplicant = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => registerSchema.parse(data))
+  .validator((data: unknown) => registerSchema.parse(data))
   .handler(async ({ data }) => {
     const { register } = await import("./portal-actions.server");
     return register(data);
@@ -51,7 +51,7 @@ export const listApplicants = createServerFn({ method: "GET" })
 
 export const getApplicant = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ applicantId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ applicantId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { adminGetApplicant } = await import("./portal-actions.server");
     return adminGetApplicant(context.userId, data.applicantId);
@@ -59,7 +59,7 @@ export const getApplicant = createServerFn({ method: "GET" })
 
 export const reviewApplicant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => reviewSchema.parse(data))
+  .validator((data: unknown) => reviewSchema.parse(data))
   .handler(async ({ context, data }) => {
     const { adminReview } = await import("./portal-actions.server");
     return adminReview(context.userId, data);
@@ -67,7 +67,7 @@ export const reviewApplicant = createServerFn({ method: "POST" })
 
 export const bulkReviewApplicants = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => bulkReviewSchema.parse(data))
+  .validator((data: unknown) => bulkReviewSchema.parse(data))
   .handler(async ({ context, data }) => {
     const { adminBulkReview } = await import("./portal-actions.server");
     return adminBulkReview(context.userId, data);
@@ -75,7 +75,7 @@ export const bulkReviewApplicants = createServerFn({ method: "POST" })
 
 export const setEmploymentStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => employmentSchema.parse(data))
+  .validator((data: unknown) => employmentSchema.parse(data))
   .handler(async ({ context, data }) => {
     const { adminSetEmployment } = await import("./portal-actions.server");
     return adminSetEmployment(context.userId, data);
@@ -83,7 +83,7 @@ export const setEmploymentStatus = createServerFn({ method: "POST" })
 
 export const adminReplyToApplicant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z.object({ applicantId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }).parse(data),
   )
   .handler(async ({ context, data }) => {
@@ -107,7 +107,7 @@ export const adminMarkMessagesRead = createServerFn({ method: "POST" })
 
 export const sendMessageToAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => messageSchema.parse(data))
+  .validator((data: unknown) => messageSchema.parse(data))
   .handler(async ({ context, data }) => {
     const { sendUserMessage } = await import("./portal-actions.server");
     return sendUserMessage(context.userId, data.body);
@@ -125,7 +125,7 @@ export const submitApplicationFn = createServerFn({ method: "POST" })
 const emailSchema = z.object({ email: z.string().trim().email().max(255) });
 
 export const checkLoginAllowed = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => emailSchema.parse(data))
+  .validator((data: unknown) => emailSchema.parse(data))
   .handler(async ({ data }) => {
     const { assertNotLocked, assertApplicantEmail } = await import("./portal-auth.server");
     assertApplicantEmail(data.email);
@@ -134,21 +134,21 @@ export const checkLoginAllowed = createServerFn({ method: "POST" })
 
 
 export const reportLoginResult = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => emailSchema.extend({ success: z.boolean() }).parse(data))
+  .validator((data: unknown) => emailSchema.extend({ success: z.boolean() }).parse(data))
   .handler(async ({ data }) => {
     const { recordLoginResult } = await import("./portal-auth.server");
     return recordLoginResult(data.email, data.success);
   });
 
 export const fetchSecurityQuestion = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => emailSchema.parse(data))
+  .validator((data: unknown) => emailSchema.parse(data))
   .handler(async ({ data }) => {
     const { getSecurityQuestion } = await import("./portal-auth.server");
     return getSecurityQuestion(data.email);
   });
 
 export const resetPassword = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         email: z.string().trim().email().max(255),
@@ -166,7 +166,7 @@ export const resetPassword = createServerFn({ method: "POST" })
 
 export const updateSecurityQuestion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         question: z.string().trim().min(5).max(200),
@@ -181,7 +181,7 @@ export const updateSecurityQuestion = createServerFn({ method: "POST" })
 
 export const updatePassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ newPassword: z.string().min(8).max(72) }).parse(data))
+  .validator((data: unknown) => z.object({ newPassword: z.string().min(8).max(72) }).parse(data))
   .handler(async ({ context, data }) => {
     const { changePassword } = await import("./portal-auth.server");
     return changePassword(context.userId, data.newPassword);
@@ -190,13 +190,25 @@ export const updatePassword = createServerFn({ method: "POST" })
 /* ---------------- Application period ---------------- */
 
 export const fetchApplicationPeriod = createServerFn({ method: "GET" }).handler(async () => {
-  const { getApplicationPeriod } = await import("./portal-auth.server");
-  return getApplicationPeriod();
+  try {
+    const { getApplicationPeriod } = await import("./portal-auth.server");
+    return await getApplicationPeriod();
+  } catch (err) {
+    console.warn("[fetchApplicationPeriod] Falling back to default period:", err);
+    const deadline = "2026-08-10T23:59:59+01:00";
+    return {
+      deadline,
+      manuallyClosed: false,
+      open: new Date(deadline).getTime() > Date.now(),
+      change: null,
+      changedAt: null,
+    };
+  }
 });
 
 export const saveApplicationPeriod = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         deadline: z.string().min(4).max(40).optional(),
@@ -221,7 +233,7 @@ export const saveApplicationPeriod = createServerFn({ method: "POST" })
 
 export const verifyUploadedDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ documentId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ documentId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { verifyDocument } = await import("./document-verify.server");
     return verifyDocument(context.userId, data.documentId);
@@ -238,7 +250,7 @@ export const assistantThreads = createServerFn({ method: "GET" })
 
 export const assistantThreadMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ threadId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ threadId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { threadMessages } = await import("./assistant.server");
     return threadMessages(context.userId, data.threadId);
@@ -246,7 +258,7 @@ export const assistantThreadMessages = createServerFn({ method: "POST" })
 
 export const assistantDeleteThread = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ threadId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ threadId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { deleteThread } = await import("./assistant.server");
     return deleteThread(context.userId, data.threadId);
@@ -263,7 +275,7 @@ const attachmentSchema = z
 
 export const assistantAsk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         threadId: z.string().uuid().nullable().optional(),
@@ -279,7 +291,7 @@ export const assistantAsk = createServerFn({ method: "POST" })
 
 export const assistantTranscribe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z.object({ audio: z.string().min(20), mimeType: z.string().min(3).max(80) }).parse(data),
   )
   .handler(async ({ data }) => {
@@ -294,7 +306,7 @@ export const assistantTranscribe = createServerFn({ method: "POST" })
 
 export const assistantSpeak = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ text: z.string().trim().min(1).max(4000) }).parse(data))
+  .validator((data: unknown) => z.object({ text: z.string().trim().min(1).max(4000) }).parse(data))
   .handler(async ({ data }) => {
     const { speakText } = await import("./ai-gateway.server");
     return { audio: await speakText(data.text) };
@@ -306,7 +318,7 @@ const audienceSchema = z.enum(["all", "accepted", "pending", "rejected", "employ
 
 export const createUpdatePost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         body: z.string().trim().min(1).max(20000),
@@ -331,7 +343,7 @@ export const createUpdatePost = createServerFn({ method: "POST" })
 
 export const deleteUpdatePost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { deletePost } = await import("./posts.server");
     return deletePost(context.userId, data.postId);
@@ -346,7 +358,7 @@ export const listUpdateFeed = createServerFn({ method: "GET" })
 
 export const reactToPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { toggleReaction } = await import("./posts.server");
     return toggleReaction(context.userId, data.postId);
@@ -354,7 +366,7 @@ export const reactToPost = createServerFn({ method: "POST" })
 
 export const commentOnPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z.object({ postId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }).parse(data),
   )
   .handler(async ({ context, data }) => {
@@ -364,7 +376,7 @@ export const commentOnPost = createServerFn({ method: "POST" })
 
 export const markPostSeen = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
+  .validator((data: unknown) => z.object({ postId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     const { markPostSeen: mark } = await import("./posts.server");
     return mark(context.userId, data.postId);
@@ -381,7 +393,7 @@ export const getExtraAiProvider = createServerFn({ method: "GET" })
 
 export const saveExtraAiProvider = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         baseUrl: z.string().trim().max(300),
@@ -399,7 +411,7 @@ export const saveExtraAiProvider = createServerFn({ method: "POST" })
 /* ---------------- Public enquiries ---------------- */
 
 export const sendPublicEnquiry = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         body: z.string().trim().min(5).max(3000),

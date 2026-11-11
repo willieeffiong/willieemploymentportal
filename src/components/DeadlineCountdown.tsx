@@ -41,9 +41,10 @@ export function DeadlineCountdown({ tone = "light" }: { tone?: "light" | "dark" 
       : "bg-secondary text-secondary-foreground";
   const muted = tone === "dark" ? "text-sm opacity-90" : "text-sm text-muted-foreground";
 
-  const deadlineLabel = deadline
-    ? deadline.toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
-    : "";
+  const deadlineLabel =
+    now !== null && deadline
+      ? deadline.toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
+      : "";
 
   if (closed) {
     return (
